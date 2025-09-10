@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id            Int              @id @default(autoincrement())
+  nome          String
+  email         String           @unique
+  senha_hash    String
+  telefone      String?
+  perfil        String?
+  tipo_cliente  String?
+  empresa       String?
+  avatar_url    String?          @map("avatar_url")
+  curriculo_url String?          @map("curriculo_url")
+  created_at    DateTime         @default(now())
+  status        String           @default("ativo")
+  tipo          String           @default("cliente")
+  updated_at    DateTime
+  agendamentos  Agendamento[]
+  resultados    ResultadoTeste[]
+
+  @@map("usuarios")
+}
+
+model Teste {
+  id            Int              @id @default(autoincrement())
+  titulo        String
+  descricao     String?
+  ativo         Boolean          @default(true)
+  criado_em     DateTime         @default(now()) @map("criado_em")
+  atualizado_em DateTime         @updatedAt @map("atualizado_em")
+  perguntas     Pergunta[]
+  resultados    ResultadoTeste[]
+
+  @@map("testes")
+}
+
+model Pergunta {
+  id          Int        @id @default(autoincrement())
+  teste_id    Int        @map("teste_id")
+  pergunta    String
+  tipo        String
+  ordem       Int        @default(0)
+  obrigatoria Boolean    @default(true)
+  criado_em   DateTime   @default(now()) @map("criado_em")
+  teste       Teste      @relation(fields: [teste_id], references: [id], onDelete: Cascade)
+  respostas   Resposta[]
+
+  @@map("perguntas")
+}
+
+model Resposta {
+  id          Int      @id @default(autoincrement())
+  pergunta_id Int      @map("pergunta_id")
+  resposta    String
+  correta     Boolean  @default(false)
+  pontuacao   Int      @default(0)
+  criado_em   DateTime @default(now()) @map("criado_em")
+  pergunta    Pergunta @relation(fields: [pergunta_id], references: [id], onDelete: Cascade)
+
+  @@map("respostas")
+}
+
+model ResultadoTeste {
+  id              Int      @id @default(autoincrement())
+  usuario_id      Int      @map("usuario_id")
+  teste_id        Int      @map("teste_id")
+  respostas       Json
+  pontuacao_total Int      @default(0) @map("pontuacao_total")
+  concluido       Boolean  @default(false)
+  criado_em       DateTime @default(now()) @map("criado_em")
+  atualizado_em   DateTime @updatedAt @map("atualizado_em")
+  teste           Teste    @relation(fields: [teste_id], references: [id], onDelete: Cascade)
+  usuario         Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@map("resultados_teste")
+}
+
+model Agendamento {
+  id              Int      @id @default(autoincrement())
+  usuario_id      Int      @map("usuario_id")
+  titulo          String
+  descricao       String?
+  data_hora       DateTime @map("data_hora")
+  duracao_minutos Int      @default(60) @map("duracao_minutos")
+  status          String   @default("agendado")
+  tipo            String   @default("sessao")
+  criado_em       DateTime @default(now()) @map("criado_em")
+  atualizado_em   DateTime @updatedAt @map("atualizado_em")
+  usuario         Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@map("agendamentos")
+}
