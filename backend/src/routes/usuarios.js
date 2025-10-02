@@ -42,7 +42,7 @@ const isAdmin = async (req, res, next) => {
 };
 
 // Listar todos os usuários
-router.get('/', authenticateToken, isAdmin, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const usuarios = await prisma.usuario.findMany({
       select: {
@@ -69,12 +69,15 @@ router.get('/', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // Buscar usuário por ID
-router.get('/:id', authenticateToken, isAdmin, async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+    const idInt = parseInt(id);
+    if (isNaN(idInt)) {
+      return res.status(400).json({ erro: 'ID inválido' });
+    }
     const usuario = await prisma.usuario.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: idInt },
       select: {
         id: true,
         nome: true,

@@ -11,10 +11,12 @@ import MeusAgendamentos from './pages/MeusAgendamentos';
 import AgendarSessao from './pages/AgendarSessao';
 import Testes from './Testes';
 import MeuPerfil from './pages/MeuPerfil';
+import ResultadosInteligencias from './pages/ResultadosInteligencias';
 
 // Páginas do Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminClientes from './pages/admin/AdminClientes';
+import TesteMultiplasInteligencias from './TesteMultiplasInteligencias';
 
 import './App.css';
 
@@ -36,6 +38,7 @@ function App() {
           <Route path="agendar" element={<AgendarSessao />} />
           <Route path="testes" element={<Testes />} />
           <Route path="perfil" element={<MeuPerfil />} />
+          <Route path="resultados-inteligencias" element={<ResultadosInteligencias />} />
         </Route>
 
         {/* Rotas do Admin */}
@@ -47,6 +50,7 @@ function App() {
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="clientes" element={<AdminClientes />} />
+          <Route path="teste-multiplas-inteligencias" element={<TesteMultiplasInteligencias />} />
           {/* Outras rotas admin serão adicionadas aqui */}
         </Route>
 

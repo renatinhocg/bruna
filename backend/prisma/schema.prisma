@@ -9,22 +9,23 @@ datasource db {
 }
 
 model Usuario {
-  id            Int              @id @default(autoincrement())
-  nome          String
-  email         String           @unique
-  senha_hash    String
-  telefone      String?
-  perfil        String?
-  tipo_cliente  String?
-  empresa       String?
-  avatar_url    String?          @map("avatar_url")
-  curriculo_url String?          @map("curriculo_url")
-  created_at    DateTime         @default(now())
-  status        String           @default("ativo")
-  tipo          String           @default("cliente")
-  updated_at    DateTime
-  agendamentos  Agendamento[]
-  resultados    ResultadoTeste[]
+  id                Int                 @id @default(autoincrement())
+  nome              String
+  email             String              @unique
+  senha_hash        String
+  telefone          String?
+  perfil            String?
+  tipo_cliente      String?
+  empresa           String?
+  avatar_url        String?             @map("avatar_url")
+  curriculo_url     String?             @map("curriculo_url")
+  created_at        DateTime            @default(now())
+  status            String              @default("ativo")
+  tipo              String              @default("cliente")
+  updated_at        DateTime
+  agendamentos      Agendamento[]
+  resultados        ResultadoTeste[]
+  testes_inteligencia TesteInteligencia[]
 
   @@map("usuarios")
 }
@@ -97,4 +98,121 @@ model Agendamento {
   usuario         Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@map("agendamentos")
+}
+
+// Modelos para Múltiplas Inteligências
+model Categoria {
+  id                       Int                     @id @default(autoincrement())
+  nome                     String                  @unique
+  descricao                String
+  resultado                String                  // Texto grande descrevendo o resultado/características desta inteligência
+  caracteristicas_inteligente String?              // Características específicas desta inteligência
+  carreiras_associadas     String?                 // Carreiras e profissões associadas a esta inteligência
+  cor                      String
+  ativo                    Boolean                 @default(true)
+  created_at               DateTime                @default(now())
+  updated_at               DateTime                @updatedAt
+  perguntas                PerguntaInteligencia[]
+  resultados               ResultadoInteligencia[]
+
+  @@map("categorias_inteligencia")
+}
+
+model PerguntaInteligencia {
+  id           Int                     @id @default(autoincrement())
+  texto        String
+  categoria_id Int
+  tipo         String                  @default("multipla_escolha") // "multipla_escolha" ou "escala"
+  ordem        Int                     @default(0)
+  obrigatoria  Boolean                 @default(true)
+  ativo        Boolean                 @default(true)
+  created_at   DateTime                @default(now())
+  updated_at   DateTime                @updatedAt
+  categoria    Categoria               @relation(fields: [categoria_id], references: [id], onDelete: Cascade)
+  possibilidades PossibilidadeResposta[]
+  respostas    RespostaInteligencia[]
+
+  @@map("perguntas_inteligencia")
+}
+
+model PossibilidadeResposta {
+  id         Int                     @id @default(autoincrement())
+  pergunta_id Int?                   // Nullable para possibilidades globais
+  texto      String
+  valor      Int
+  descricao  String
+  ordem      Int                     @default(0)
+  ativo      Boolean                 @default(true)
+  created_at DateTime                @default(now())
+  updated_at DateTime                @updatedAt
+  pergunta   PerguntaInteligencia?   @relation(fields: [pergunta_id], references: [id], onDelete: Cascade)
+  respostas  RespostaInteligencia[]
+
+  @@map("possibilidades_resposta")
+}
+
+model RespostaInteligencia {
+  id                      Int                  @id @default(autoincrement())
+  teste_realizado_id      Int
+  pergunta_id             Int
+  possibilidade_id        Int
+  created_at              DateTime             @default(now())
+  teste_realizado         TesteInteligencia    @relation(fields: [teste_realizado_id], references: [id], onDelete: Cascade)
+  pergunta                PerguntaInteligencia @relation(fields: [pergunta_id], references: [id], onDelete: Cascade)
+  possibilidade           PossibilidadeResposta @relation(fields: [possibilidade_id], references: [id], onDelete: Cascade)
+
+  @@map("respostas_inteligencia")
+}
+
+model TesteInteligencia {
+  id                 Int                     @id @default(autoincrement())
+  usuario_id         Int
+  nome_usuario       String?
+  email_usuario      String?
+  concluido          Boolean                 @default(false)
+  tempo_resposta     Int?                    // em minutos
+  pontuacao_total    Int                     @default(0)
+  inteligencia_dominante String?
+  created_at         DateTime                @default(now())
+  updated_at         DateTime                @updatedAt
+  autorizado        Boolean             @default(false)
+  usuario           Usuario             @relation(fields: [usuario_id], references: [id])
+  respostas          RespostaInteligencia[]
+  resultados         ResultadoInteligencia[]
+
+  @@map("testes_inteligencia")
+}
+
+model ResultadoInteligencia {
+  id           Int               @id @default(autoincrement())
+  teste_id     Int
+  categoria_id Int
+  pontuacao    Int               @default(0)
+  percentual   Float             @default(0)
+  aprovado     Boolean           @default(false)
+  created_at   DateTime          @default(now())
+  teste        TesteInteligencia @relation(fields: [teste_id], references: [id], onDelete: Cascade)
+  categoria    Categoria         @relation(fields: [categoria_id], references: [id], onDelete: Cascade)
+
+  @@map("resultados_inteligencia")
+}
+
+model ConfiguracaoTeste {
+  id                   Int      @id @default(autoincrement())
+  teste_ativo          Boolean  @default(false)
+  tempo_limite         Int      @default(30) // em minutos
+  mostrar_progresso    Boolean  @default(true)
+  permitir_voltar      Boolean  @default(false)
+  randomizar_perguntas Boolean  @default(false)
+  randomizar_opcoes    Boolean  @default(false)
+  pontuacao_minima     Int      @default(0)
+  pontuacao_maxima     Int      @default(100)
+  mensagem_inicio      String
+  mensagem_fim         String
+  instrucoes           String
+  tema_cores           String   @default("azul")
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  @@map("configuracao_teste")
 }

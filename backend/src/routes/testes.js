@@ -69,18 +69,18 @@ router.get('/', async (req, res) => {
       where: whereClause,
       select: {
         id: true,
-        nome: true,
+        titulo: true,  // nome -> titulo
         descricao: true,
         ativo: true,
-        created_at: true,
-        updated_at: true,
+        criado_em: true,  // created_at -> criado_em
+        atualizado_em: true,  // updated_at -> atualizado_em
         _count: {
           select: {
             perguntas: true
           }
         }
       },
-      orderBy: { created_at: 'desc' }
+      orderBy: { criado_em: 'desc' }  // created_at -> criado_em
     });
 
     // Adicionar total_perguntas aos resultados
@@ -118,22 +118,29 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /testes - Criar novo teste (apenas admin)
-router.post('/', authenticateToken, isAdmin, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { nome, descricao } = req.body;
-    
-    if (!nome || !descricao) {
-      return res.status(400).json({ erro: 'Nome e descrição são obrigatórios' });
-    }
+    const {
+      nome_usuario,
+      email_usuario,
+      concluido,
+      pontuacao_total,
+      tempo_resposta,
+      inteligencia_dominante
+    } = req.body;
 
-    const teste = await prisma.teste.create({
+    const teste = await prisma.testeInteligencia.create({
       data: {
-        nome,
-        descricao,
-        ativo: true
+        usuario_id: req.user.id,
+        nome_usuario,
+        email_usuario,
+        concluido,
+        pontuacao_total,
+        tempo_resposta,
+        inteligencia_dominante
       }
     });
-    
+
     res.status(201).json(teste);
   } catch (error) {
     console.error('Erro ao criar teste:', error);

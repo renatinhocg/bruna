@@ -76,6 +76,11 @@ const AdminLayout = () => {
       label: 'Testes e Avaliações',
     },
     {
+      key: 'teste-multiplas-inteligencias',
+      icon: <BarChartOutlined />,
+      label: 'Teste Múltiplas Inteligências',
+    },
+    {
       key: 'financeiro',
       icon: <DollarOutlined />,
       label: 'Financeiro',

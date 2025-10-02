@@ -1,197 +1,405 @@
-import express from 'express';
-import { PrismaClient } from '../generated/prisma/client.js';
-
-const prisma = new PrismaClient();
 const router = express.Router();
+const prisma = new PrismaClient();
 
-// GET /resultados - Listar resultados (com filtros)
-router.get('/', async (req, res) => {
+// PUT /api/resultados/:id/aprovar - Aprovar resultado de inteligência múltipla
+router.put('/:id/aprovar', authenticateToken, isAdmin, async (req, res) => {
   try {
-    const { usuario_id, teste_id } = req.query;
-    const where = {};
-    if (usuario_id) where.usuario_id = parseInt(usuario_id);
-    if (teste_id) where.teste_id = parseInt(teste_id);
+    const resultado = await prisma.resultadoInteligencia.update({
+      where: { id: parseInt(req.params.id) },
+      data: { aprovado: true },
+    });
+    res.json({ success: true, data: resultado });
+  } catch (error) {
+    console.error('Erro ao aprovar resultado:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+import express from 'express';
+import { PrismaClient } from '../generated/prisma/index.js';
+import { authenticateToken, isAdmin } from '../middleware/auth.js';
 
-    const resultados = await prisma.resultadoTeste.findMany({
+
+// GET /api/resultados - Listar todos os resultados
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const { categoria_id } = req.query;
+    
+    const where = {
+      ...(categoria_id && { categoria_id: parseInt(categoria_id) })
+    };
+
+    const resultados = await prisma.resultadoInteligencia.findMany({
       where,
       include: {
-        usuario: {
-          select: {
-            id: true,
-            nome: true,
-            email: true
+        teste: {
+          include: {
+            usuario: {
+              select: {
+                id: true,
+                nome: true,
+                email: true,
+                avatar_url: true
+              }
+            }
           }
         },
-        teste: {
-          select: {
-            id: true,
-            titulo: true
+        categoria: {
+          include: {
+            _count: {
+              select: { perguntas: true }
+            }
           }
         }
       },
-      orderBy: { criado_em: 'desc' }
+      orderBy: {
+        created_at: 'desc'
+      }
     });
-    res.json(resultados);
+
+    // Transformar os dados para corresponder ao frontend
+    const resultadosFormatados = resultados.map(resultado => {
+      const status = resultado.percentual >= 70 ? 'alto' : 
+                    resultado.percentual >= 40 ? 'medio' : 'baixo';
+      return {
+        id: resultado.id,
+        usuario: resultado.teste?.usuario || { nome: 'Usuário anônimo', email: '' },
+        categoria: resultado.categoria,
+        pontuacao: resultado.pontuacao,
+        percentual: resultado.percentual,
+        status,
+        aprovado: resultado.aprovado,
+        data_teste: resultado.created_at,
+        created_at: resultado.created_at
+      };
+    });
+
+    res.json({
+      success: true,
+      data: resultadosFormatados
+    });
   } catch (error) {
-    res.status(500).json({ erro: 'Erro ao buscar resultados' });
+    console.error('Erro ao buscar resultados:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
   }
 });
 
-// GET /resultados/:id - Buscar resultado específico
-router.get('/:id', async (req, res) => {
+// GET /api/resultados/stats - Estatísticas dos resultados
+router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    const resultado = await prisma.resultadoTeste.findUnique({
+    const total = await prisma.resultadoInteligencia.count();
+    
+    const resultados = await prisma.resultadoInteligencia.findMany({
+      select: {
+        pontuacao: true,
+        percentual: true,
+        created_at: true,
+        teste: {
+          select: {
+            usuario: {
+              select: {
+                nome: true
+              }
+            }
+          }
+        },
+        categoria: {
+          select: {
+            nome: true
+          }
+        }
+      }
+    });
+
+    const mediaPontuacao = resultados.length > 0 
+      ? resultados.reduce((acc, r) => acc + (r.pontuacao || 0), 0) / resultados.length 
+      : 0;
+
+    const mediaPercentual = resultados.length > 0 
+      ? resultados.reduce((acc, r) => acc + (r.percentual || 0), 0) / resultados.length 
+      : 0;
+
+    // Criar status baseado no percentual
+    const porStatus = resultados.reduce((acc, r) => {
+      let status = 'baixo';
+      if (r.percentual >= 70) status = 'alto';
+      else if (r.percentual >= 40) status = 'medio';
+      
+      const existing = acc.find(item => item.status === status);
+      if (existing) {
+        existing.count++;
+      } else {
+        acc.push({ status, count: 1 });
+      }
+      return acc;
+    }, []);
+
+    const recentes = resultados
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5)
+      .map(r => ({
+        id: r.id,
+        usuario: r.teste?.usuario?.nome || 'Usuário anônimo',
+        categoria: r.categoria.nome,
+        data: r.created_at
+      }));
+
+    res.json({
+      success: true,
+      data: {
+        total,
+        mediaPontuacao,
+        mediaPercentual,
+        porStatus,
+        recentes
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+// GET /api/resultados/:id - Buscar resultado específico com detalhes
+router.get('/:id', authenticateToken, async (req, res) => {
+  try {
+    const resultado = await prisma.resultadoInteligencia.findUnique({
       where: { id: parseInt(req.params.id) },
       include: {
-        usuario: {
+        teste: {
+          include: {
+            usuario: {
+              select: {
+                id: true,
+                nome: true,
+                email: true,
+                avatar_url: true
+              }
+            },
+            respostas: {
+              include: {
+                pergunta: {
+                  select: {
+                    id: true,
+                    texto: true,
+                    ordem: true
+                  }
+                },
+                possibilidade: {
+                  select: {
+                    id: true,
+                    texto: true,
+                    valor: true
+                  }
+                }
+              },
+              orderBy: {
+                pergunta: {
+                  ordem: 'asc'
+                }
+              }
+            }
+          }
+        },
+        categoria: {
           select: {
             id: true,
             nome: true,
-            email: true
-          }
-        },
-        teste: {
-          select: {
-            id: true,
-            titulo: true,
-            descricao: true
+            cor: true,
+            caracteristicas_inteligente: true,
+            carreiras_associadas: true
           }
         }
       }
     });
-    if (!resultado) return res.status(404).json({ erro: 'Resultado não encontrado' });
-    res.json(resultado);
-  } catch (error) {
-    res.status(500).json({ erro: 'Erro ao buscar resultado' });
-  }
-});
 
-// POST /resultados - Salvar resultado de teste
-router.post('/', async (req, res) => {
-  try {
-    const { usuario_id, teste_id, respostas, pontuacao_total, concluido } = req.body;
-
-    // Verificar se usuário e teste existem
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: parseInt(usuario_id) }
-    });
-    if (!usuario) return res.status(404).json({ erro: 'Usuário não encontrado' });
-
-    const teste = await prisma.teste.findUnique({
-      where: { id: parseInt(teste_id) }
-    });
-    if (!teste) return res.status(404).json({ erro: 'Teste não encontrado' });
-
-    // Verificar se já existe um resultado para este usuário/teste
-    const resultadoExistente = await prisma.resultadoTeste.findFirst({
-      where: {
-        usuario_id: parseInt(usuario_id),
-        teste_id: parseInt(teste_id)
-      }
-    });
-
-    let resultado;
-    if (resultadoExistente) {
-      // Atualizar resultado existente
-      resultado = await prisma.resultadoTeste.update({
-        where: { id: resultadoExistente.id },
-        data: {
-          respostas,
-          pontuacao_total: pontuacao_total || 0,
-          concluido: concluido || false
-        },
-        include: {
-          usuario: {
-            select: {
-              id: true,
-              nome: true,
-              email: true
-            }
-          },
-          teste: {
-            select: {
-              id: true,
-              titulo: true
-            }
-          }
-        }
-      });
-    } else {
-      // Criar novo resultado
-      resultado = await prisma.resultadoTeste.create({
-        data: {
-          usuario_id: parseInt(usuario_id),
-          teste_id: parseInt(teste_id),
-          respostas,
-          pontuacao_total: pontuacao_total || 0,
-          concluido: concluido || false
-        },
-        include: {
-          usuario: {
-            select: {
-              id: true,
-              nome: true,
-              email: true
-            }
-          },
-          teste: {
-            select: {
-              id: true,
-              titulo: true
-            }
-          }
-        }
+    if (!resultado) {
+      return res.status(404).json({
+        success: false,
+        message: 'Resultado não encontrado'
       });
     }
 
-    res.status(201).json(resultado);
+    // Formatar dados para corresponder ao frontend
+    const resultadoFormatado = {
+      id: resultado.id,
+      usuario: resultado.teste?.usuario || { nome: 'Usuário anônimo', email: '' },
+      categoria: resultado.categoria,
+      pontuacao: resultado.pontuacao,
+      percentual: resultado.percentual,
+      status: resultado.percentual >= 70 ? 'alto' : 
+              resultado.percentual >= 40 ? 'medio' : 'baixo',
+      data_teste: resultado.created_at,
+      created_at: resultado.created_at,
+      respostas: resultado.teste?.respostas || []
+    };
+
+    res.json({
+      success: true,
+      data: resultadoFormatado
+    });
   } catch (error) {
-    res.status(500).json({ erro: 'Erro ao salvar resultado' });
+    console.error('Erro ao buscar resultado:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
   }
 });
 
-// PUT /resultados/:id - Atualizar resultado
-router.put('/:id', async (req, res) => {
+// POST /api/resultados - Criar novo resultado
+router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { respostas, pontuacao_total, concluido } = req.body;
-    const resultado = await prisma.resultadoTeste.update({
+    console.log('--- [POST /api/resultados] Body recebido:', JSON.stringify(req.body, null, 2));
+    const {
+      teste_id,
+      categoria_id,
+      pontuacao,
+      percentual
+    } = req.body;
+
+    // Validações básicas
+    if (!teste_id || !categoria_id) {
+      console.log('Faltando teste_id ou categoria_id:', { teste_id, categoria_id });
+      return res.status(400).json({
+        success: false,
+        message: 'Teste e categoria são obrigatórios'
+      });
+    }
+
+    // Verificar se teste existe
+    const teste = await prisma.testeInteligencia.findUnique({
+      where: { id: parseInt(teste_id) }
+    });
+    if (!teste) {
+      console.log('Teste não encontrado para id:', teste_id);
+      return res.status(404).json({
+        success: false,
+        message: 'Teste não encontrado'
+      });
+    }
+
+    // Verificar se categoria existe
+    const categoria = await prisma.categoria.findUnique({
+      where: { id: parseInt(categoria_id) }
+    });
+    if (!categoria) {
+      console.log('Categoria não encontrada para id:', categoria_id);
+      return res.status(404).json({
+        success: false,
+        message: 'Categoria não encontrada'
+      });
+    }
+
+    // Criar resultado
+    const resultado = await prisma.resultadoInteligencia.create({
+      data: {
+        teste_id: parseInt(teste_id),
+        categoria_id: parseInt(categoria_id),
+        pontuacao,
+        percentual
+      }
+    });
+
+    console.log('Resultado criado com sucesso:', resultado);
+    res.status(201).json({
+      success: true,
+      data: resultado
+    });
+  } catch (error) {
+    console.error('Erro ao criar resultado:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+// PUT /api/resultados/:id - Atualizar resultado
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const {
+      pontuacao,
+      percentual
+    } = req.body;
+
+    const resultado = await prisma.resultadoInteligencia.update({
       where: { id: parseInt(req.params.id) },
       data: {
-        respostas,
-        pontuacao_total,
-        concluido
+        ...(pontuacao !== undefined && { pontuacao }),
+        ...(percentual !== undefined && { percentual })
       },
       include: {
-        usuario: {
+        teste: {
+          include: {
+            usuario: {
+              select: {
+                id: true,
+                nome: true,
+                email: true,
+                avatar_url: true
+              }
+            }
+          }
+        },
+        categoria: {
           select: {
             id: true,
             nome: true,
-            email: true
-          }
-        },
-        teste: {
-          select: {
-            id: true,
-            titulo: true
+            cor: true
           }
         }
       }
     });
-    res.json(resultado);
+
+    res.json({
+      success: true,
+      data: resultado
+    });
   } catch (error) {
-    res.status(500).json({ erro: 'Erro ao atualizar resultado' });
+    console.error('Erro ao atualizar resultado:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
   }
 });
 
-// DELETE /resultados/:id - Excluir resultado
-router.delete('/:id', async (req, res) => {
+// DELETE /api/resultados/:id - Excluir resultado
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    await prisma.resultadoTeste.delete({
+    // Verificar se o resultado existe
+    const resultado = await prisma.resultadoInteligencia.findUnique({
       where: { id: parseInt(req.params.id) }
     });
-    res.json({ mensagem: 'Resultado excluído com sucesso' });
+
+    if (!resultado) {
+      return res.status(404).json({
+        success: false,
+        message: 'Resultado não encontrado'
+      });
+    }
+
+    // Excluir resultado
+    await prisma.resultadoInteligencia.delete({
+      where: { id: parseInt(req.params.id) }
+    });
+
+    res.json({
+      success: true,
+      message: 'Resultado excluído com sucesso'
+    });
   } catch (error) {
-    res.status(500).json({ erro: 'Erro ao excluir resultado' });
+    console.error('Erro ao excluir resultado:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
   }
 });
 
