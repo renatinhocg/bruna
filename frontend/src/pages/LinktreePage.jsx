@@ -12,9 +12,9 @@ const LinktreePage = () => {
     nome: 'BM Consultoria',
     descricao: 'Transformando carreiras e realizando sonhos profissionais há mais de 20 anos.',
     avatar: 'https://ui-avatars.com/api/?name=Bruna+Martins&background=1890ff&color=fff&size=200',
-    logo: '/logo-bm.png',
-    heroImageMobile: `/banner-desktop.png?v=${Date.now()}`,
-    heroImageDesktop: `/banner-desktop.png?v=${Date.now()}`
+    logo: '/logo-site.png',
+    heroImageMobile: `/bruna.png?v=${Date.now()}`,
+    heroImageDesktop: `/bruna.png?v=${Date.now()}`
   });
 
   useEffect(() => {
