@@ -16,16 +16,13 @@ import {
     Col,
     Drawer,
     Typography,
-    Avatar,
-    Divider,
-    Card
+    Avatar
 } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
     DeleteOutlined,
     FilePdfOutlined,
-    EyeOutlined,
     UserOutlined
 } from '@ant-design/icons';
 import apiService from '../../services/api';
@@ -33,7 +30,7 @@ import AdminLayout from '../../components/AdminLayout';
 
 const { Option } = Select;
 const { TextArea } = Input;
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 export default function VagasPage() {
     const [vagas, setVagas] = useState([]);
@@ -78,13 +75,13 @@ export default function VagasPage() {
         setModalVisible(true);
     };
 
-    const handleEdit = (vaga) => {
+    const handleEdit = (vaga: any) => {
         setEditingVaga(vaga);
         form.setFieldsValue(vaga);
         setModalVisible(true);
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id: number | string) => {
         try {
             await apiService.deleteJob(id);
             api.success({ message: 'Vaga excluída com sucesso!', placement: 'topRight' });
@@ -95,7 +92,7 @@ export default function VagasPage() {
         }
     };
 
-    const handleSubmit = async (values) => {
+    const handleSubmit = async (values: any) => {
         setLoading(true);
         try {
             if (editingVaga) {
@@ -118,28 +115,28 @@ export default function VagasPage() {
         }
     };
 
-    const openFunnel = async (vaga) => {
+    const openFunnel = async (vaga: any) => {
         setSelectedVaga(vaga);
         setFunnelVisible(true);
         setLoadingF(true);
         try {
             const data = await apiService.getJobApplications(vaga.id);
             setApplications(data);
-        } catch (error) {
+        } catch {
             api.error({ message: 'Erro ao carregar candidatos', placement: 'topRight' });
         } finally {
             setLoadingF(false);
         }
     };
 
-    const updateApplicationStatus = async (appId, newStatus) => {
+    const updateApplicationStatus = async (appId: number | string, newStatus: string) => {
         try {
             await apiService.updateJobApplicationStatus(appId, newStatus);
             api.success({ message: 'Status atualizado', placement: 'topRight' });
             // Reload applications for current job
             const data = await apiService.getJobApplications(selectedVaga.id);
             setApplications(data);
-        } catch (err) {
+        } catch {
             api.error({ message: 'Falha ao atualizar status', placement: 'topRight' });
         }
     };

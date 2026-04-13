@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Table,
     Button,
-    Modal,
     Tag,
     Space,
     notification,
@@ -48,11 +47,10 @@ export default function BancoTalentosPage() {
             // Como não criamos um filtro específico na rota atual, trazemos todos os clientes e filtramos
             const data = await apiService.getUsers();
             // Mostramos apenas usuarios do tipo 'cliente' que já tem perfil ou se candidataram (ou mostramos todos)
-            const clients = data.filter(u => u.tipo !== 'admin');
+            const clients = data.filter((u: { tipo: string }) => u.tipo !== 'admin');
             setCandidatos(clients);
-        } catch (error) {
-            console.error('Erro ao carregar banco de talentos:', error);
-            api.error({ message: 'Erro ao carregar banco de talentos', placement: 'topRight' });
+        } catch {
+            api.error({ message: 'Erro ao carregar candidatos', placement: 'topRight' });
         } finally {
             setLoading(false);
         }
@@ -62,7 +60,7 @@ export default function BancoTalentosPage() {
         loadCandidatos();
     }, [loadCandidatos]);
 
-    const viewCandidate = (candidate) => {
+    const viewCandidate = (candidate: any) => {
         setSelectedCandidate(candidate);
         setDrawerVisible(true);
     };
@@ -231,7 +229,7 @@ export default function BancoTalentosPage() {
                                 Resultados de Testes (Se aplicável)
                             </Title>
                             <Text type="secondary">
-                                Para acessar os relatórios completos DISC ou Dominância Cerebral, verifique os menus dedicados a tais testes procurando por "{selectedCandidate.nome}".
+                                Para acessar os relatórios completos DISC ou Dominância Cerebral, verifique os menus dedicados a tais testes procurando por &quot;{selectedCandidate.nome}&quot;.
                             </Text>
                         </div>
                     )}
