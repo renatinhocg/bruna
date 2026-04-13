@@ -16,7 +16,8 @@ import {
   Col,
   Popconfirm,
   Drawer,
-  Timeline
+  Timeline,
+  Upload
 } from 'antd';
 import { 
   PlusOutlined, 
@@ -24,7 +25,9 @@ import {
   DeleteOutlined, 
   LinkOutlined,
   BarChartOutlined,
-  EyeOutlined
+  EyeOutlined,
+  LoadingOutlined,
+  UploadOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -36,6 +39,8 @@ const AdminLinks = () => {
   const [editingLink, setEditingLink] = useState(null);
   const [selectedLinkStats, setSelectedLinkStats] = useState(null);
   const [form] = Form.useForm();
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8002';
 
@@ -88,6 +93,7 @@ const AdminLinks = () => {
 
   const handleEdit = (link) => {
     setEditingLink(link);
+    setImageUrl(link.imagem_url || '');
     form.setFieldsValue(link);
     setModalVisible(true);
   };
@@ -106,6 +112,7 @@ const AdminLinks = () => {
   const handleModalClose = () => {
     setModalVisible(false);
     setEditingLink(null);
+    setImageUrl('');
     form.resetFields();
   };
 
@@ -132,8 +139,13 @@ const AdminLinks = () => {
           justifyContent: 'center',
           background: record.cor || '#1890ff',
           borderRadius: '8px',
+          overflow: 'hidden'
         }}>
-          {icone || '🔗'}
+          {record.imagem_url ? (
+            <img src={record.imagem_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            icone || '🔗'
+          )}
         </div>
       ),
     },
@@ -373,8 +385,55 @@ const AdminLinks = () => {
                 name="icone"
                 label="Ícone (Emoji)"
               >
-                <Input placeholder="🔗" maxLength={2} />
+                <Input placeholder="🔗" maxLength={2} disabled={!!imageUrl} />
               </Form.Item>
+            </Col>
+            <Col span={16}>
+              <Form.Item
+                name="imagem_url"
+                label="Imagem do Link (46x46px recomendado)"
+              >
+                <Upload
+                  name="image"
+                  listType="picture-card"
+                  className="avatar-uploader"
+                  showUploadList={false}
+                  action={`${API_URL}/api/arquivos/link-image`}
+                  onChange={(info) => {
+                    if (info.file.status === 'uploading') {
+                      setImageLoading(true);
+                      return;
+                    }
+                    if (info.file.status === 'done') {
+                      const url = info.file.response.url;
+                      setImageLoading(false);
+                      setImageUrl(url);
+                      form.setFieldsValue({ imagem_url: url });
+                    }
+                  }}
+                >
+                  {imageUrl ? (
+                    <img src={imageUrl} alt="avatar" style={{ width: '100%', borderRadius: '8px' }} />
+                  ) : (
+                    <div>
+                      {imageLoading ? <LoadingOutlined /> : <PlusOutlined />}
+                      <div style={{ marginTop: 8 }}>Upload</div>
+                    </div>
+                  )}
+                </Upload>
+              </Form.Item>
+              {imageUrl && (
+                <Button 
+                  type="link" 
+                  danger 
+                  onClick={() => {
+                    setImageUrl('');
+                    form.setFieldsValue({ imagem_url: '' });
+                  }}
+                >
+                  Remover Imagem
+                </Button>
+              )}
             </Col>
             <Col span={8}>
               <Form.Item
