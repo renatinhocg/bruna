@@ -1,43 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Typography, Avatar, Dropdown } from 'antd';
-import { 
-  UserOutlined, 
-  LogoutOutlined, 
-  HomeOutlined, 
-  CalendarOutlined, 
+import { Layout, Menu, Typography, Avatar, Dropdown, Drawer, Button } from 'antd';
+import {
+  UserOutlined,
+  LogoutOutlined,
+  HomeOutlined,
+  CalendarOutlined,
   FileTextOutlined,
-  PlusOutlined,
-  DownOutlined
+  DownOutlined,
+  MenuOutlined
 } from '@ant-design/icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Home01Icon, TestTubeIcon, Calendar03Icon, UserIcon, Logout01Icon, Briefcase02Icon } from '@hugeicons/core-free-icons';
+import API_BASE_URL from '../config/api';
+import logoImpulsoDesktop from '../assets/img/logo-logadin.png';
+import logoImpulsoMobile from '../assets/img/simbolo-mobile.png'; // Símbolo para mobile
+import logoBM from '../assets/img/logo-bruna.png';
 
-const { Content, Footer } = Layout;
-const { Title } = Typography;
+const { Sider, Content } = Layout;
+const { Text } = Typography;
 
 const MainLayout = () => {
   const [user, setUser] = useState(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const isActive = (path) => {
-    return location.pathname === path || (path === '/dashboard' && location.pathname === '/');
-  };
 
-  const getButtonStyle = (path) => ({
-    background: 'transparent',
-    border: 'none',
-    borderBottom: isActive(path) ? '2px solid #1890ff' : '2px solid transparent',
-    padding: '8px 16px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    color: '#2c3e50',
-    fontSize: '14px',
-    height: '40px',
-    transition: 'all 0.2s ease',
-    borderRadius: '4px 4px 0 0'
-  });
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path === '/cliente' || path === '/cliente/dashboard') return 'home';
+    if (path.includes('/cliente/testes')) return 'testes';
+    if (path.includes('/cliente/agendamentos')) return 'agendamentos';
+    if (path.includes('/vagas') || path.includes('minhas-vagas')) return 'vagas';
+    if (path.includes('/cliente/perfil')) return 'perfil';
+    return 'home';
+  };
 
   useEffect(() => {
     const carregarUsuario = async () => {
@@ -45,24 +53,21 @@ const MainLayout = () => {
       if (userData) {
         try {
           const parsedUser = JSON.parse(userData);
-          console.log('Dados do usuário do localStorage:', parsedUser);
           const token = localStorage.getItem('token');
-          
+
           if (token && parsedUser.id) {
-            const response = await fetch(`http://localhost:8002/api/usuarios/${parsedUser.id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/usuarios/${parsedUser.id}`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
               }
             });
-            
+
             if (response.ok) {
               const updatedUser = await response.json();
-              console.log('Dados atualizados do usuário da API:', updatedUser);
               setUser(updatedUser);
               localStorage.setItem('usuario', JSON.stringify(updatedUser));
             } else {
-              console.error('Erro ao buscar dados atualizados do usuário:', response.statusText);
               setUser(parsedUser);
             }
           } else {
@@ -100,199 +105,266 @@ const MainLayout = () => {
     navigate('/login');
   };
 
-  const dropdownItems = [
-    {
-      key: 'perfil',
-      icon: <UserOutlined />,
-      label: 'Meu Perfil',
-      onClick: () => navigate('/perfil')
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Sair',
-      onClick: handleLogout
-    }
-  ];
-
   const getAvatarUrl = (user) => {
-    console.log('getAvatarUrl chamada com user:', user);
-    console.log('user?.avatar:', user?.avatar);
-    console.log('user?.avatar_url:', user?.avatar_url);
-    console.log('user?.foto:', user?.foto);
-    
-    // Se já tem uma URL completa (como no perfil)
     if (user?.avatar_url && user.avatar_url.startsWith('http')) {
-      console.log('Usando avatar_url direta:', user.avatar_url);
       return user.avatar_url;
     }
-    
-    // Se tem algum campo indicando que há avatar, gerar URL da API
+
     if (user?.avatar || user?.avatar_url || user?.foto || (user && user.id)) {
-      const avatarUrl = `http://localhost:8002/api/arquivos/avatar/${user.id}`;
-      console.log('Avatar URL gerada:', avatarUrl);
-      return avatarUrl;
+      return `${API_BASE_URL}/api/arquivos/avatar/${user.id}`;
     }
-    
-    console.log('Avatar não encontrado, retornando null');
+
     return null;
   };
 
-  return (
-    <Layout className="layout" style={{ minHeight: '100vh', background: '#f8fafc' }}>
-      <div 
-        className="custom-header"
-        style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          paddingLeft: 32,
-          paddingRight: 32,
-          background: '#ffffff',
-          borderBottom: '1px solid #1890ff',
-          height: 70,
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000
-        }}
-      >
-        <div className="logo" style={{ minWidth: '300px' }}>
-          <Title level={3} style={{ color: '#2c3e50', margin: 0, whiteSpace: 'nowrap', fontWeight: 600 }}>
-            Portal do Cliente
-          </Title>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <button
-              onClick={() => navigate('/dashboard')}
-              style={getButtonStyle('/dashboard')}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderBottom = '2px solid #40a9ff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderBottom = isActive('/dashboard') ? '2px solid #1890ff' : '2px solid transparent';
-              }}
-            >
-              <HomeOutlined /> Início
-            </button>
-            <button
-              onClick={() => navigate('/agendamentos')}
-              style={getButtonStyle('/agendamentos')}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderBottom = '2px solid #40a9ff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderBottom = isActive('/agendamentos') ? '2px solid #1890ff' : '2px solid transparent';
-              }}
-            >
-              <CalendarOutlined /> Agendamentos
-            </button>
-            <button
-              onClick={() => navigate('/agendar')}
-              style={getButtonStyle('/agendar')}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderBottom = '2px solid #40a9ff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderBottom = isActive('/agendar') ? '2px solid #1890ff' : '2px solid transparent';
-              }}
-            >
-              <PlusOutlined /> Agendar Sessão
-            </button>
-            <button
-              onClick={() => navigate('/testes')}
-              style={getButtonStyle('/testes')}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderBottom = '2px solid #40a9ff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderBottom = isActive('/testes') ? '2px solid #1890ff' : '2px solid transparent';
-              }}
-            >
-              <FileTextOutlined /> Testes
-            </button>
-          </nav>
+  const getMenuItems = () => {
+    return [
+      {
+        key: 'home',
+        icon: <HugeiconsIcon icon={Home01Icon} size={24} strokeWidth={1.5} />,
+        label: 'Home',
+        onClick: () => {
+          navigate('/cliente');
+          setMobileMenuOpen(false);
+        }
+      },
+      {
+        key: 'testes',
+        icon: <HugeiconsIcon icon={TestTubeIcon} size={24} strokeWidth={1.5} />,
+        label: 'Testes',
+        onClick: () => {
+          navigate('/cliente/testes');
+          setMobileMenuOpen(false);
+        }
+      },
+      {
+        key: 'agendamentos',
+        icon: <HugeiconsIcon icon={Calendar03Icon} size={24} strokeWidth={1.5} />,
+        label: 'Agendamentos',
+        onClick: () => {
+          navigate('/cliente/agendamentos');
+          setMobileMenuOpen(false);
+        }
+      },
+      {
+        key: 'vagas',
+        icon: <HugeiconsIcon icon={Briefcase02Icon} size={24} strokeWidth={1.5} />,
+        label: 'Minhas Vagas',
+        onClick: () => {
+          navigate('/minhas-vagas');
+          setMobileMenuOpen(false);
+        }
+      },
+      {
+        key: 'perfil',
+        icon: <HugeiconsIcon icon={UserIcon} size={24} strokeWidth={1.5} />,
+        label: 'Perfil',
+        onClick: () => {
+          navigate('/cliente/perfil');
+          setMobileMenuOpen(false);
+        }
+      },
+      {
+        key: 'logout',
+        icon: <HugeiconsIcon icon={Logout01Icon} size={24} strokeWidth={1.5} />,
+        label: 'Sair',
+        onClick: handleLogout
+      }
+    ];
+  };
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <Dropdown
-              menu={{ items: dropdownItems }}
-              placement="bottomRight"
-              trigger={['click']}
-            >
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 8,
-                cursor: 'pointer',
-                padding: '8px 12px',
-                borderRadius: 8,
-                transition: 'all 0.2s',
-                ':hover': {
-                  backgroundColor: '#f0f0f0'
-                }
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f0f0f0';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              >
-                <Avatar 
-                  size={40} 
-                  src={getAvatarUrl(user)}
-                  icon={!getAvatarUrl(user) ? <UserOutlined /> : null}
-                  style={{ 
-                    border: '2px solid #1890ff'
-                  }} 
-                />
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <span style={{ 
-                    fontSize: 14, 
-                    color: '#2c3e50', 
-                    fontWeight: 500,
-                    lineHeight: 1.2
-                  }}>
-                    {user?.nome || 'Usuário'}
-                  </span>
-                  <span style={{ 
-                    fontSize: 12, 
-                    color: '#8c8c8c',
-                    lineHeight: 1.2
-                  }}>
-                    Perfil
-                  </span>
-                </div>
-                <DownOutlined style={{ 
-                  fontSize: 12, 
-                  color: '#8c8c8c',
-                  marginLeft: 4
-                }} />
-              </div>
-            </Dropdown>
-          </div>
-        </div>
+
+
+  const SidebarContent = ({ isMobileDrawer = false }) => (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      minHeight: isMobileDrawer ? 'auto' : '100vh',
+      background: '#ffffff',
+      borderRight: '1px solid #E5E5E5'
+    }}>
+      {/* Logo Impulso */}
+      <div style={{
+        padding: '30px 16px',
+        textAlign: 'center',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+      }}>
+        <img
+          src={collapsed && !isMobileDrawer ? logoImpulsoMobile : logoImpulsoDesktop}
+          alt="Logo Impulso"
+          style={{
+            height: collapsed && !isMobileDrawer ? '30px' : isMobileDrawer ? '35px' : '40px',
+            maxWidth: '100%',
+            width: collapsed && !isMobileDrawer ? 'auto' : '85%',
+            objectFit: 'contain',
+            transition: 'all 0.3s',
+            imageRendering: '-webkit-optimize-contrast',
+            WebkitFontSmoothing: 'antialiased'
+          }}
+        />
       </div>
 
-      <Content style={{ padding: '24px 32px', minHeight: 'calc(100vh - 70px - 69px)' }}>
-        <div style={{ 
-          minHeight: '100%', 
-          padding: 24, 
-          background: '#fff',
-          borderRadius: 8,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      {/* Avatar e Nome do Usuário */}
+      {!collapsed && (
+        <div style={{
+          padding: '24px 20px',
+          textAlign: 'center',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
-          <Outlet />
+          <Avatar
+            size={80}
+            src={getAvatarUrl(user)}
+            icon={!getAvatarUrl(user) && <UserOutlined />}
+            style={{
+              marginBottom: '12px'
+
+            }}
+          />
+          <div>
+            <Text style={{
+              color: '#1E1E1E',
+              fontSize: '20px',
+              fontWeight: '600',
+              display: 'block',
+              marginBottom: '4px'
+            }}>
+              {user?.nome || 'Usuário'}
+            </Text>
+            <Text style={{
+              color: '#A4A4A4',
+              fontSize: '12px',
+              display: 'block',
+              textAlign: 'center'
+            }}>
+              {user?.email || 'email@exemplo.com'}
+            </Text>
+          </div>
         </div>
+      )}
+
+      {/* Menu */}
+      <Menu
+        mode="inline"
+        selectedKeys={[getSelectedKey()]}
+        items={getMenuItems()}
+        className="custom-sidebar-menu"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          marginTop: '20px',
+          flex: 1
+        }}
+        theme="light"
+      />
+
+      {/* Logo BM no Footer */}
+      {(!collapsed || isMobileDrawer) && (
+        <div style={{
+          padding: '64px 20px',
+          textAlign: 'center',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          marginTop: 'auto'
+        }}>
+          <img
+            src={logoBM}
+            alt="BM Consultoria"
+            style={{
+              height: isMobileDrawer ? '38px' : '40px',
+              maxWidth: '220px',
+              objectFit: 'contain',
+              opacity: 0.7
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      {/* Mobile Header */}
+      {isMobile && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '60px',
+          background: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 20px',
+          zIndex: 1000,
+          borderBottom: '1px solid #E5E5E5'
+        }}>
+          <img
+            src={logoImpulsoDesktop}
+            alt="Logo"
+            style={{
+              height: '32px',
+              width: 'auto',
+              maxWidth: '160px',
+              objectFit: 'contain',
+              imageRendering: '-webkit-optimize-contrast',
+              WebkitFontSmoothing: 'antialiased'
+            }}
+          />
+          <Button
+            type="text"
+            icon={<MenuOutlined style={{ fontSize: '20px', color: 'black' }} />}
+            onClick={() => setMobileMenuOpen(true)}
+          />
+        </div>
+      )}
+
+      {/* Mobile Drawer */}
+      {isMobile && (
+        <Drawer
+          placement="left"
+          onClose={() => setMobileMenuOpen(false)}
+          open={mobileMenuOpen}
+          closable={false}
+          width={280}
+          bodyStyle={{ padding: 0, background: '#000' }}
+        >
+          <SidebarContent isMobileDrawer={true} />
+        </Drawer>
+      )}
+
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <Sider
+          width={280}
+          collapsible
+          collapsed={collapsed}
+          onCollapse={setCollapsed}
+          style={{
+            background: '#ffffff',
+            position: 'fixed',
+            height: '100vh',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 100,
+            overflow: 'hidden'
+          }}
+        >
+          <SidebarContent />
+        </Sider>
+      )}
+
+      {/* Content */}
+      <Content style={{
+        minHeight: '100vh',
+        background: '#F9F9F9',
+        marginLeft: isMobile ? 0 : (collapsed ? 80 : 280),
+        marginTop: isMobile ? '60px' : 0,
+        transition: 'margin-left 0.2s'
+      }}>
+        <Outlet context={{ user }} />
       </Content>
-      
-      <Footer style={{ textAlign: 'center', background: '#f0f2f5' }}>
-        Portal do Cliente ©2024 Created by Your Company
-      </Footer>
     </Layout>
   );
 };

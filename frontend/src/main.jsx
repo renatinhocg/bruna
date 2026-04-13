@@ -6,7 +6,17 @@ import App from './App';
 
 const root = createRoot(document.getElementById('root'));
 root.render(
-  <ConfigProvider locale={ptBR}>
+  <ConfigProvider 
+    locale={ptBR}
+    theme={{
+      token: {
+        colorPrimary: '#FDB913',
+        colorLink: '#F39200',
+        borderRadius: 8,
+        fontFamily: 'Poppins, sans-serif',
+      },
+    }}
+  >
     <App />
   </ConfigProvider>
 );

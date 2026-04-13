@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Typography, message, Space, Tabs, Divider, Row, Col } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, LoginOutlined, UserAddOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
+import { Form, Input, Button, Typography, message } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
+import InputMask from 'react-input-mask';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import './Login.css';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 
-const API_BASE_URL = 'http://localhost:8002/api';
+const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:8002'}/api`;
 
 function Login() {
   const [loading, setLoading] = useState(false);
@@ -27,11 +28,8 @@ function Login() {
         localStorage.setItem('usuario', JSON.stringify(response.data.usuario));
         message.success('Login realizado com sucesso!');
         const user = response.data.usuario;
-        if (user.tipo === 'admin' || user.email.includes('admin')) {
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/dashboard');
-        }
+        // Sempre redireciona para a home do cliente
+        navigate('/cliente');
       }
     } catch (error) {
       const errorMessage = error.response?.data?.erro || 'Erro ao fazer login';
@@ -54,7 +52,7 @@ function Login() {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('usuario', JSON.stringify(response.data.usuario));
         message.success('Cadastro realizado com sucesso!');
-        navigate('/dashboard');
+        navigate('/cliente');
       }
     } catch (error) {
       const errorMessage = error.response?.data?.erro || 'Erro ao fazer cadastro';
@@ -65,103 +63,157 @@ function Login() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '20px'
-    }}>
-      <Card style={{ width: '100%', maxWidth: 400, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-            Sistema de Coach
-          </Title>
-          <Text type="secondary">Plataforma de desenvolvimento profissional</Text>
-        </div>
-        <Form
-          form={form}
-          name={isRegister ? 'register' : 'login'}
-          onFinish={isRegister ? handleRegister : handleLogin}
-          layout="vertical"
-          size="large"
-        >
-          {isRegister && (
-            <Form.Item
-              name="nome"
-              rules={[{ required: true, message: 'Por favor, insira seu nome!' }]}
-            >
-              <Input prefix={<UserOutlined />} placeholder="Nome completo" />
-            </Form.Item>
-          )}
-          <Form.Item
-            name="email"
-            rules={[
-              { required: true, message: 'Por favor, insira seu email!' },
-              { type: 'email', message: 'Email inválido!' }
-            ]}
+    <div className="login-container">
+      {/* Lado esquerdo - Imagem */}
+      <div className="login-image-section">
+      </div>
+
+      {/* Lado direito - Formulário */}
+      <div className="login-form-section">
+        <div className="login-form-container">
+          <div className="login-header">
+            <img src="/logo-login.png" alt="Logo" className="login-logo" />
+          </div>
+
+          <Form
+            form={form}
+            name={isRegister ? 'register' : 'login'}
+            onFinish={isRegister ? handleRegister : handleLogin}
+            layout="vertical"
+            size="large"
+            className="login-form"
           >
-            <Input prefix={<MailOutlined />} placeholder="Email" />
-          </Form.Item>
-          {isRegister && (
+            {isRegister && (
+              <Form.Item
+                name="nome"
+                label="Nome completo"
+                rules={[{ required: true, message: 'Por favor, insira seu nome!' }]}
+              >
+                <Input 
+                  prefix={<UserOutlined />} 
+                  placeholder="Digite seu nome" 
+                  className="login-input"
+                />
+              </Form.Item>
+            )}
+
             <Form.Item
-              name="telefone"
-              rules={[]}
-            >
-              <Input placeholder="Telefone (opcional)" />
-            </Form.Item>
-          )}
-          <Form.Item
-            name="senha"
-            rules={[{ required: true, message: 'Por favor, insira sua senha!' }]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="Senha" />
-          </Form.Item>
-          {isRegister && (
-            <Form.Item
-              name="confirmarSenha"
-              dependencies={["senha"]}
+              name="email"
+              label="Email"
               rules={[
-                { required: true, message: 'Por favor, confirme sua senha!' },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value || getFieldValue('senha') === value) {
-                      return Promise.resolve();
-                    }
-                    return Promise.reject(new Error('As senhas não coincidem!'));
-                  },
-                }),
+                { required: true, message: 'Por favor, insira seu email!' },
+                { type: 'email', message: 'Email inválido!' }
               ]}
             >
-              <Input.Password prefix={<LockOutlined />} placeholder="Confirmar senha" />
+              <Input 
+                prefix={<MailOutlined />} 
+                placeholder="seu@email.com" 
+                className="login-input"
+              />
             </Form.Item>
-          )}
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              block
-              style={{ height: '48px', fontSize: '16px' }}
+
+            {isRegister && (
+              <Form.Item
+                name="telefone"
+                label="Telefone (opcional)"
+              >
+                <InputMask mask="(99) 99999-9999">
+                  {(inputProps) => (
+                    <Input 
+                      {...inputProps}
+                      prefix={<PhoneOutlined />}
+                      placeholder="(00) 00000-0000" 
+                      className="login-input"
+                    />
+                  )}
+                </InputMask>
+              </Form.Item>
+            )}
+
+            <Form.Item
+              name="senha"
+              label="Senha"
+              rules={[{ required: true, message: 'Por favor, insira sua senha!' }]}
             >
-              {isRegister ? 'Cadastrar' : 'Entrar'}
-            </Button>
-          </Form.Item>
-          <div style={{ textAlign: 'center' }}>
-            <Text type="secondary">
-              {isRegister ? 'Já tem conta?' : 'Não tem conta?'}{' '}
+              <Input.Password 
+                prefix={<LockOutlined />} 
+                placeholder="Sua senha" 
+                className="login-input"
+              />
+            </Form.Item>
+
+            {isRegister && (
+              <Form.Item
+                name="confirmarSenha"
+                label="Confirmar senha"
+                dependencies={["senha"]}
+                rules={[
+                  { required: true, message: 'Por favor, confirme sua senha!' },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue('senha') === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error('As senhas não coincidem!'));
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password 
+                  prefix={<LockOutlined />} 
+                  placeholder="Confirme sua senha" 
+                  className="login-input"
+                />
+              </Form.Item>
+            )}
+
+            <Form.Item style={{ marginBottom: '16px' }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+                block
+                className="login-button"
+              >
+                {isRegister ? 'Criar Conta' : 'Entrar'}
+              </Button>
+            </Form.Item>
+
+            <div className="login-footer">
+              <Text className="login-footer-text">
+                {isRegister ? 'Já tem uma conta?' : 'Não tem uma conta?'}
+              </Text>
               <Button
                 type="link"
-                onClick={() => setIsRegister(!isRegister)}
-                style={{ padding: 0 }}
+                onClick={() => {
+                  setIsRegister(!isRegister);
+                  form.resetFields();
+                }}
+                className="login-link-button"
               >
-                {isRegister ? 'Fazer login' : 'Cadastrar-se'}
+                {isRegister ? 'Fazer login' : 'Criar conta'}
               </Button>
-            </Text>
-          </div>
-        </Form>
-      </Card>
+            </div>
+          </Form>
+          {/* Lado direito - Formulário 
+          <div style={{ marginTop: 32, textAlign: 'center' }}>
+            <Link to="/cartilha" style={{
+              display: 'inline-block',
+              background: '#1890ff',
+              color: '#fff',
+              padding: '12px 32px',
+              borderRadius: 8,
+              fontWeight: 600,
+              textDecoration: 'none',
+              boxShadow: '0 2px 8px rgba(24,144,255,0.08)',
+              transition: 'background 0.2s',
+            }}
+            onMouseOver={e => e.currentTarget.style.background = '#1765ad'}
+            onMouseOut={e => e.currentTarget.style.background = '#1890ff'}
+            >Visualizar Cartilha PDF</Link>
+          </div>*/}
+        </div>
+      </div>
     </div>
   );
 }

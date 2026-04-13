@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, Button, Radio, Progress, Row, Col, Typography, message, Spin } from 'antd';
 import { ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -6,17 +6,23 @@ import { useNavigate } from 'react-router-dom';
 const { Title, Text } = Typography;
 
 const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) => {
-  const [perguntas, setPerguntas] = useState([]);
+  const [perguntasOriginais, setPerguntasOriginais] = useState([]);
+  const [perguntasParaExibir, setPerguntasParaExibir] = useState([]); // Perguntas já embaralhadas/ordenadas
   const [possibilidades, setPossibilidades] = useState([]);
   const [respostas, setRespostas] = useState([]);
   const [perguntaAtual, setPerguntaAtual] = useState(0);
-  const [loading, setLoading] = useState(true); // Começar como true
-  const [testeIniciado, setTesteIniciado] = useState(true); // Começar como true (ir direto para o teste)
+  const [loading, setLoading] = useState(true);
+  const [testeIniciado, setTesteIniciado] = useState(false); // Começar com false para mostrar tela inicial
   const [testeConcluido, setTesteConcluido] = useState(false);
+  const [configuracoes, setConfiguracoes] = useState(null);
+  const carregouRef = useRef(false); // Evitar carregamento duplo
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchDados();
+    if (!carregouRef.current) {
+      carregouRef.current = true;
+      fetchDados();
+    }
   }, []);
 
   const fetchDados = async () => {
@@ -30,11 +36,22 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
         return;
       }
 
-      // Busca paralela
-      const [perguntasResp, possResp] = await Promise.allSettled([
+      // Busca paralela incluindo configurações
+      const [perguntasResp, possResp, configResp] = await Promise.allSettled([
         fetch(`${BASE_URL}/api/perguntas`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${BASE_URL}/api/possibilidades`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${BASE_URL}/api/possibilidades`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${BASE_URL}/api/configuracoes`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
+
+      // Configurações
+      let config = null;
+      if (configResp.status === 'fulfilled' && configResp.value.ok) {
+        const configJson = await configResp.value.json();
+        if (configJson.success) {
+          config = configJson.data;
+          setConfiguracoes(config);
+        }
+      }
 
       // Perguntas
       if (perguntasResp.status === 'fulfilled') {
@@ -43,8 +60,30 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
         } else if (perguntasResp.value.ok) {
           const json = await perguntasResp.value.json();
             if (json.success && Array.isArray(json.data)) {
-              const ordenadas = [...json.data].sort((a,b)=>a.ordem-b.ordem);
-              setPerguntas(ordenadas);
+              const perguntasOriginaisCarregadas = [...json.data];
+              setPerguntasOriginais(perguntasOriginaisCarregadas);
+              
+              console.log('📊 Total de perguntas:', perguntasOriginaisCarregadas.length);
+              console.log('🎲 Randomizar perguntas?', config?.randomizar_perguntas);
+              
+              let perguntasParaUsar = [...perguntasOriginaisCarregadas];
+              
+              // Aplicar randomização se configurado
+              if (config && config.randomizar_perguntas) {
+                // Embaralhar array (Fisher-Yates)
+                for (let i = perguntasParaUsar.length - 1; i > 0; i--) {
+                  const j = Math.floor(Math.random() * (i + 1));
+                  [perguntasParaUsar[i], perguntasParaUsar[j]] = [perguntasParaUsar[j], perguntasParaUsar[i]];
+                }
+                console.log('✅ Perguntas embaralhadas!');
+                console.log('Primeiras 5 perguntas:', perguntasParaUsar.slice(0, 5).map(p => `${p.id}: ${p.texto.substring(0, 30)}...`));
+              } else {
+                // Ordenar pela ordem original
+                perguntasParaUsar.sort((a,b)=>a.ordem-b.ordem);
+                console.log('📝 Perguntas em ordem original');
+              }
+              
+              setPerguntasParaExibir(perguntasParaUsar);
             } else {
               message.error('Formato inesperado de perguntas.');
             }
@@ -59,8 +98,19 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
       if (possResp.status === 'fulfilled' && possResp.value.ok) {
         const possJson = await possResp.value.json();
         if (possJson.success && Array.isArray(possJson.data)) {
-          const ord = [...possJson.data].sort((a,b)=>a.ordem-b.ordem);
-          setPossibilidades(ord);
+          let possibilidadesProcessadas = [...possJson.data];
+          
+          // Aplicar randomização de opções se configurado
+          if (config && config.randomizar_opcoes) {
+            for (let i = possibilidadesProcessadas.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [possibilidadesProcessadas[i], possibilidadesProcessadas[j]] = [possibilidadesProcessadas[j], possibilidadesProcessadas[i]];
+            }
+          } else {
+            possibilidadesProcessadas.sort((a,b)=>a.ordem-b.ordem);
+          }
+          
+          setPossibilidades(possibilidadesProcessadas);
         }
       }
 
@@ -86,7 +136,7 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
   // Função removida - não precisamos mais da tela inicial
 
   const proximaPergunta = () => {
-    if (perguntaAtual < perguntas.length - 1) {
+    if (perguntaAtual < perguntasParaExibir.length - 1) {
       setPerguntaAtual(perguntaAtual + 1);
     } else {
       finalizarTeste();
@@ -100,7 +150,7 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
   };
 
   const selecionarResposta = (possibilidadeId, valor) => {
-    const perguntaId = perguntas[perguntaAtual].id;
+    const perguntaId = perguntasParaExibir[perguntaAtual].id;
     const novasRespostas = respostas.filter(r => r.pergunta_id !== perguntaId);
     novasRespostas.push({
       pergunta_id: perguntaId,
@@ -111,8 +161,8 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
   };
 
   const obterRespostaSelecionada = () => {
-    if (perguntas.length === 0) return null;
-    const perguntaId = perguntas[perguntaAtual].id;
+    if (perguntasParaExibir.length === 0) return null;
+    const perguntaId = perguntasParaExibir[perguntaAtual].id;
     return respostas.find(r => r.pergunta_id === perguntaId)?.possibilidade_id;
   };
 
@@ -203,10 +253,14 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
   };
 
   const reiniciarTeste = () => {
-    setTesteIniciado(true); // Manter como true para ir direto ao teste
+    setTesteIniciado(false); // Voltar para tela inicial
     setTesteConcluido(false);
     setRespostas([]);
     setPerguntaAtual(0);
+  };
+
+  const iniciarTeste = () => {
+    setTesteIniciado(true);
   };
 
   if (loading) {
@@ -221,11 +275,15 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
   console.log('=== RENDER DO COMPONENTE ===');
   console.log('testeIniciado:', testeIniciado);
   console.log('testeConcluido:', testeConcluido);
-  console.log('perguntas.length:', perguntas.length);
+  console.log('perguntasParaExibir.length:', perguntasParaExibir.length);
   console.log('loading:', loading);
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
+    <div style={{ 
+      padding: window.innerWidth < 768 ? '16px' : '24px', 
+      maxWidth: '1200px', 
+      margin: '0 auto' 
+    }} onClick={(e) => e.stopPropagation()}>
       {showBackButton && (
         <Button 
           icon={<ArrowLeftOutlined />} 
@@ -234,39 +292,104 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
             e.stopPropagation();
             voltarParaDashboard();
           }}
-          style={{ marginBottom: '24px' }}
+          style={{ 
+            marginBottom: window.innerWidth < 768 ? '16px' : '24px',
+            fontSize: window.innerWidth < 768 ? '14px' : '16px'
+          }}
           htmlType="button"
         >
           {onBack ? 'Voltar aos Testes' : 'Voltar ao Dashboard'}
         </Button>
       )}
 
-      {/* Removida a tela inicial - vai direto para o teste */}
+      {/* Tela Inicial com botão INICIAR */}
+      {!testeIniciado && !testeConcluido && perguntasParaExibir.length > 0 && (
+        <Card 
+          style={{ 
+            maxWidth: 600, 
+            margin: '0 auto', 
+            textAlign: 'center',
+            minHeight: window.innerWidth < 768 ? '300px' : '400px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          bodyStyle={{ 
+            width: '100%', 
+            padding: window.innerWidth < 768 ? '30px 20px' : '60px 40px' 
+          }}
+        >
+          <div>
+            <Title level={window.innerWidth < 768 ? 3 : 2} style={{ 
+              color: '#1890ff', 
+              marginBottom: window.innerWidth < 768 ? 16 : 24,
+              fontSize: window.innerWidth < 768 ? '20px' : '28px'
+            }}>
+              Teste de Inteligências Múltiplas
+            </Title>
+            <Text style={{ 
+              fontSize: window.innerWidth < 768 ? '14px' : '16px', 
+              display: 'block', 
+              marginBottom: window.innerWidth < 768 ? 30 : 40, 
+              color: '#666',
+              lineHeight: window.innerWidth < 768 ? '1.5' : '1.8'
+            }}>
+              É uma abordagem desenvolvida pelo psicólogo americano Howard Gardner, um renomado professor da Universidade Harvard que realiza pesquisas científicas sobre sensibilidade à inteligência. Sua teoria se tornou um teste ao longo do tempo, identificando tipos distintos de inteligência. 
+              <br /><br />
+              O teste das inteligências múltiplas de Gardner se dedica a entender esses diversos tipos de inteligência e oferece resultados rápidos e precisos, que permitem que você aproveite seus pontos fortes, a partir da consciência de suas habilidades e tipos de inteligência.
+              <br /><br />
+              Preste atenção às perguntas e escolha as melhores opções que o descrevem.
 
-      {testeIniciado && !testeConcluido && perguntas.length > 0 && (
-        <Card style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ marginBottom: 24 }}>
+            </Text>
+            <Button 
+              type="primary" 
+              size="large"
+              onClick={iniciarTeste}
+              style={{ 
+                height: window.innerWidth < 768 ? '50px' : '60px', 
+                fontSize: window.innerWidth < 768 ? '18px' : '20px',
+                padding: window.innerWidth < 768 ? '0 40px' : '0 60px',
+                fontWeight: 'bold',
+                width: window.innerWidth < 768 ? '100%' : 'auto'
+              }}
+            >
+              INICIAR
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {testeIniciado && !testeConcluido && perguntasParaExibir.length > 0 && (
+        <Card style={{ 
+          maxWidth: 900, 
+          margin: '0 auto',
+          padding: window.innerWidth < 768 ? '12px' : '24px'
+        }}>
+          <div style={{ marginBottom: window.innerWidth < 768 ? 16 : 24 }}>
             <Progress
-              percent={Math.round(((perguntaAtual + 1) / perguntas.length) * 100)}
+              percent={Math.round(((perguntaAtual + 1) / perguntasParaExibir.length) * 100)}
               status="active"
               showInfo={true}
-              format={() => `${perguntaAtual + 1}/${perguntas.length}`}
+              format={(percent) => `${perguntaAtual + 1}/${perguntasParaExibir.length}`}
             />
           </div>
 
-          <div style={{ marginBottom: 32, textAlign: 'center' }}>
-            <Title level={3} style={{ marginBottom: 8, color: '#1890ff' }}>
-              Pergunta {perguntaAtual + 1} de {perguntas.length}
-            </Title>
-            <Text style={{ fontSize: '18px', lineHeight: '1.6', fontWeight: 500 }}>
-              {perguntas[perguntaAtual].texto}
+          <div style={{ 
+            marginBottom: window.innerWidth < 768 ? 24 : 32, 
+            textAlign: 'center',
+            padding: window.innerWidth < 768 ? '0 8px' : '0'
+          }}>
+            <Text style={{ 
+              fontSize: window.innerWidth < 768 ? '18px' : '24px', 
+              lineHeight: '1.6', 
+              fontWeight: 500, 
+              display: 'block' 
+            }}>
+              {perguntasParaExibir[perguntaAtual].texto}
             </Text>
-            <div style={{ marginTop: 8, fontSize: '12px', color: '#999' }}>
-              {possibilidades.length} opções de resposta disponíveis
-            </div>
           </div>
 
-          <div style={{ marginBottom: 32 }}>
+          <div style={{ marginBottom: window.innerWidth < 768 ? 24 : 32 }}>
             <Radio.Group
               value={obterRespostaSelecionada()}
               onChange={(e) => {
@@ -277,34 +400,46 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
               }}
               style={{ width: '100%' }}
             >
-              <Row gutter={[16, 16]} justify="center">
+              <Row gutter={[window.innerWidth < 768 ? 12 : 16, window.innerWidth < 768 ? 12 : 16]} justify="center">
                 {possibilidades.map(possibilidade => (
                   <Col xs={24} sm={12} md={8} lg={4} key={possibilidade.id}>
                     <Card
-                      hoverable
+                      hoverable={window.innerWidth >= 768}
+                      bordered={window.innerWidth >= 768}
                       style={{
                         textAlign: 'center',
-                        border: obterRespostaSelecionada() === possibilidade.id ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                        border: obterRespostaSelecionada() === possibilidade.id 
+                          ? '2px solid #1890ff !important' 
+                          : window.innerWidth < 768 
+                            ? 'none !important' 
+                            : '1px solid #d9d9d9',
                         backgroundColor: obterRespostaSelecionada() === possibilidade.id ? '#f0f8ff' : 'white',
                         cursor: 'pointer',
-                        minHeight: '80px',
+                        minHeight: window.innerWidth < 768 ? '60px' : '80px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        transition: 'all 0.3s ease',
+                        boxShadow: window.innerWidth < 768 ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                        borderRadius: window.innerWidth < 768 ? '8px' : '2px'
                       }}
                       onClick={() => selecionarResposta(possibilidade.id, possibilidade.valor)}
-                      bodyStyle={{ padding: '16px 8px' }}
+                      bodyStyle={{ 
+                        padding: window.innerWidth < 768 ? '14px 12px' : '16px 8px',
+                        width: '100%'
+                      }}
                     >
                       <Radio
                         value={possibilidade.id}
                         style={{ display: 'none' }}
                       />
                       <Text style={{ 
-                        fontSize: '13px', 
+                        fontSize: window.innerWidth < 768 ? '15px' : '13px', 
                         fontWeight: obterRespostaSelecionada() === possibilidade.id ? 'bold' : 'normal',
                         color: obterRespostaSelecionada() === possibilidade.id ? '#1890ff' : 'inherit',
                         textAlign: 'center',
-                        lineHeight: '1.3'
+                        lineHeight: '1.4',
+                        display: 'block'
                       }}>
                         {possibilidade.texto}
                       </Text>
@@ -349,56 +484,135 @@ const TesteMultiplasInteligencias = ({ showBackButton = true, onBack = null }) =
             display: 'flex', 
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingTop: '20px',
-            borderTop: '1px solid #f0f0f0'
+            paddingTop: window.innerWidth < 768 ? '16px' : '20px',
+            borderTop: '1px solid #f0f0f0',
+            flexDirection: window.innerWidth < 768 ? 'column' : 'row',
+            gap: window.innerWidth < 768 ? '16px' : '0'
           }}>
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={perguntaAnterior}
-              disabled={perguntaAtual === 0}
-              size="large"
-            >
-              Anterior
-            </Button>
-            
-            <Text style={{ 
-              color: !obterRespostaSelecionada() ? '#ff7875' : '#52c41a',
-              fontWeight: 'medium',
-              fontSize: '14px'
-            }}>
-              {!obterRespostaSelecionada() ? 'Por favor, selecione uma resposta para continuar' : ''}
-            </Text>
-            
-            <Button
-              type="primary"
-              size="large"
-              icon={perguntaAtual === perguntas.length - 1 ? <CheckCircleOutlined /> : <ArrowRightOutlined />}
-              onClick={proximaPergunta}
-              disabled={!obterRespostaSelecionada()}
-              loading={loading}
-            >
-              {perguntaAtual === perguntas.length - 1 ? 'Finalizar Teste' : 'Próxima'}
-            </Button>
+            {window.innerWidth < 768 ? (
+              <>
+                <Text style={{ 
+                  color: !obterRespostaSelecionada() ? '#ff7875' : '#52c41a',
+                  fontWeight: 'medium',
+                  fontSize: '13px',
+                  textAlign: 'center',
+                  width: '100%'
+                }}>
+                  {!obterRespostaSelecionada() ? 'Por favor, selecione uma resposta para continuar' : ''}
+                </Text>
+                <div style={{ 
+                  display: 'flex', 
+                  width: '100%', 
+                  maxWidth: '400px',
+                  margin: '0 auto',
+                  gap: '12px',
+                  justifyContent: 'center'
+                }}>
+                  <Button
+                    icon={<ArrowLeftOutlined />}
+                    onClick={perguntaAnterior}
+                    disabled={perguntaAtual === 0}
+                    size="large"
+                    style={{ flex: 1, height: '48px', maxWidth: '180px' }}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={perguntaAtual === perguntasParaExibir.length - 1 ? <CheckCircleOutlined /> : <ArrowRightOutlined />}
+                    onClick={proximaPergunta}
+                    disabled={!obterRespostaSelecionada()}
+                    loading={loading}
+                    style={{ flex: 1, height: '48px', maxWidth: '180px' }}
+                  >
+                    {perguntaAtual === perguntasParaExibir.length - 1 ? 'Finalizar Teste' : 'Próxima'}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <Button
+                  icon={<ArrowLeftOutlined />}
+                  onClick={perguntaAnterior}
+                  disabled={perguntaAtual === 0}
+                  size="large"
+                >
+                  Anterior
+                </Button>
+                
+                <Text style={{ 
+                  color: !obterRespostaSelecionada() ? '#ff7875' : '#52c41a',
+                  fontWeight: 'medium',
+                  fontSize: '14px'
+                }}>
+                  {!obterRespostaSelecionada() ? 'Por favor, selecione uma resposta para continuar' : ''}
+                </Text>
+                
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={perguntaAtual === perguntasParaExibir.length - 1 ? <CheckCircleOutlined /> : <ArrowRightOutlined />}
+                  onClick={proximaPergunta}
+                  disabled={!obterRespostaSelecionada()}
+                  loading={loading}
+                >
+                  {perguntaAtual === perguntasParaExibir.length - 1 ? 'Finalizar Teste' : 'Próxima'}
+                </Button>
+              </>
+            )}
           </div>
         </Card>
       )}
 
       {testeConcluido && (
-        <Card style={{ maxWidth: 600, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <CheckCircleOutlined style={{ fontSize: '64px', color: '#52c41a', marginBottom: 24 }} />
-            <Title level={2}>Teste Concluído!</Title>
-            <Text style={{ fontSize: '16px', color: '#666', marginBottom: 32, display: 'block' }}>
-              Seu teste foi finalizado com sucesso! Obrigado pela participação.
+        <Card 
+          style={{ 
+            maxWidth: 700, 
+            margin: '0 auto',
+            minHeight: '400px',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+          bodyStyle={{ width: '100%' }}
+        >
+          <div style={{ textAlign: 'center', padding: '60px 40px' }}>
+            <CheckCircleOutlined style={{ fontSize: '80px', color: '#52c41a', marginBottom: 32 }} />
+            <Title level={2} style={{ marginBottom: 24, color: '#1890ff' }}>
+              Teste Concluído com Sucesso!
+            </Title>
+            <Text style={{ 
+              fontSize: '18px', 
+              color: '#666', 
+              marginBottom: 32, 
+              display: 'block',
+              lineHeight: '1.8'
+            }}>
+              Seu teste foi enviado e está aguardando análise.
             </Text>
-            
-            <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
-              <Button onClick={reiniciarTeste}>
-                Fazer Novamente
-              </Button>
-              <Button type="primary" onClick={voltarParaDashboard}>
-                Voltar ao Dashboard
-              </Button>
+            <div style={{
+              padding: '24px',
+              backgroundColor: '#fff7e6',
+              border: '2px solid #ffa940',
+              borderRadius: '12px',
+              marginTop: 32
+            }}>
+              <Text style={{ 
+                fontSize: '20px', 
+                color: '#d48806',
+                fontWeight: 'bold',
+                display: 'block',
+                marginBottom: 12
+              }}>
+                ⏳ Aguarde a validação da Bruna
+              </Text>
+              <Text style={{ 
+                fontSize: '16px', 
+                color: '#8c8c8c',
+                display: 'block'
+              }}>
+                Você será notificado quando o resultado estiver disponível.
+              </Text>
             </div>
           </div>
         </Card>

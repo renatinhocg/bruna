@@ -1,87 +1,143 @@
+
+import express from 'express';
+import { PrismaClient } from '../generated/prisma/client.js';
+import { authenticateToken, isAdmin } from '../middleware/auth.js';
+
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// PUT /api/resultados/:id/aprovar - Aprovar resultado de inteligência múltipla
-router.put('/:id/aprovar', authenticateToken, isAdmin, async (req, res) => {
+// GET /api/resultados/usuario/:usuarioId - Resultados de múltiplas inteligências de um usuário específico (admin)
+router.get('/usuario/:usuarioId', authenticateToken, async (req, res) => {
   try {
-    const resultado = await prisma.resultadoInteligencia.update({
-      where: { id: parseInt(req.params.id) },
-      data: { aprovado: true },
+    const usuarioId = parseInt(req.params.usuarioId);
+    if (isNaN(usuarioId)) {
+      return res.status(400).json({ success: false, message: 'ID de usuário inválido' });
+    }
+    // Buscar todos os resultados de testes de múltiplas inteligências desse usuário
+    const testes = await prisma.testeInteligencia.findMany({
+      where: { usuario_id: usuarioId, concluido: true },
+      include: {
+        resultados: {
+          include: { categoria: true },
+          orderBy: { percentual: 'desc' }
+        },
+        usuario: {
+          select: { id: true, nome: true, email: true, avatar_url: true }
+        }
+      },
+      orderBy: { created_at: 'desc' }
     });
-    res.json({ success: true, data: resultado });
+    // Formatar resultados para o frontend, incluindo pontuacao_maxima
+    const resultados = [];
+    for (const teste of testes) {
+      for (const r of teste.resultados) {
+        // Buscar perguntas ativas da categoria
+        let pontuacao_maxima = 35;
+        if (r.categoria && r.categoria.id) {
+          const perguntas = await prisma.perguntaInteligencia.findMany({
+            where: { categoria_id: r.categoria.id, ativo: true },
+            include: { possibilidades: true }
+          });
+          let valorMax = 5;
+          if (perguntas.length > 0) {
+            valorMax = Math.max(...perguntas.map(p => {
+              if (p.possibilidades && p.possibilidades.length > 0) {
+                return Math.max(...p.possibilidades.map(poss => poss.valor));
+              }
+              return 5;
+            }));
+          }
+          pontuacao_maxima = perguntas.length * valorMax;
+        }
+        resultados.push({
+          id: r.id,
+          usuario: teste.usuario,
+          categoria: r.categoria,
+          pontuacao: r.pontuacao,
+          percentual: r.percentual,
+          status: teste.autorizado ? 'Autorizado' : 'Pendente',
+          data_teste: teste.created_at,
+          created_at: teste.created_at,
+          autorizado: teste.autorizado,
+          pontuacao_maxima,
+          _count: undefined
+        });
+      }
+    }
+    res.json({ success: true, data: resultados });
   } catch (error) {
-    console.error('Erro ao aprovar resultado:', error);
+    console.error('Erro ao buscar resultados do usuário:', error);
     res.status(500).json({ success: false, message: 'Erro interno do servidor' });
   }
 });
-import express from 'express';
-import { PrismaClient } from '../generated/prisma/index.js';
-import { authenticateToken, isAdmin } from '../middleware/auth.js';
 
 
-// GET /api/resultados - Listar todos os resultados
+// GET /api/resultados - Listar todos os testes realizados pelo usuário
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { categoria_id } = req.query;
+    console.log('🔍 Buscando resultados para usuário:', req.user?.id);
     
-    const where = {
-      ...(categoria_id && { categoria_id: parseInt(categoria_id) })
-    };
-
-    const resultados = await prisma.resultadoInteligencia.findMany({
-      where,
-      include: {
-        teste: {
-          include: {
-            usuario: {
-              select: {
-                id: true,
-                nome: true,
-                email: true,
-                avatar_url: true
-              }
-            }
-          }
-        },
-        categoria: {
-          include: {
-            _count: {
-              select: { perguntas: true }
-            }
-          }
-        }
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: 'Usuário não autenticado' });
+    }
+    
+    const userId = req.user.id;
+    
+    console.log('📊 Buscando testes DISC...');
+    const testesDISC = await prisma.testeDISC.findMany({
+      where: { usuario_id: userId },
+      select: {
+        id: true,
+        created_at: true,
+        iniciado_em: true
       },
-      orderBy: {
-        created_at: 'desc'
-      }
+      orderBy: { created_at: 'desc' }
+    });
+    console.log('✅ DISC encontrados:', testesDISC.length);
+    
+    console.log('📊 Buscando testes Inteligência...');
+    const testesInteligencia = await prisma.testeInteligencia.findMany({
+      where: { usuario_id: userId },
+      select: {
+        id: true,
+        created_at: true
+      },
+      orderBy: { created_at: 'desc' }
+    });
+    console.log('✅ Inteligência encontrados:', testesInteligencia.length);
+    
+    console.log('📊 Buscando testes Dominância...');
+    const testesDominancia = await prisma.testeDominancia.findMany({
+      where: { usuario_id: userId },
+      select: {
+        id: true,
+        created_at: true
+      },
+      orderBy: { created_at: 'desc' }
+    });
+    console.log('✅ Dominância encontrados:', testesDominancia.length);
+
+    // Formatar todos os testes com tipo_teste
+    const todosOsTestes = [
+      ...testesDISC.map(t => ({ ...t, tipo_teste: 'disc' })),
+      ...testesInteligencia.map(t => ({ ...t, tipo_teste: 'inteligencias' })),
+      ...testesDominancia.map(t => ({ ...t, tipo_teste: 'dominancia' }))
+    ].sort((a, b) => {
+      const dataA = new Date(a.created_at || a.iniciado_em);
+      const dataB = new Date(b.created_at || b.iniciado_em);
+      return dataB - dataA; // Mais recente primeiro
     });
 
-    // Transformar os dados para corresponder ao frontend
-    const resultadosFormatados = resultados.map(resultado => {
-      const status = resultado.percentual >= 70 ? 'alto' : 
-                    resultado.percentual >= 40 ? 'medio' : 'baixo';
-      return {
-        id: resultado.id,
-        usuario: resultado.teste?.usuario || { nome: 'Usuário anônimo', email: '' },
-        categoria: resultado.categoria,
-        pontuacao: resultado.pontuacao,
-        percentual: resultado.percentual,
-        status,
-        aprovado: resultado.aprovado,
-        data_teste: resultado.created_at,
-        created_at: resultado.created_at
-      };
-    });
-
-    res.json({
-      success: true,
-      data: resultadosFormatados
-    });
+    console.log(`✅ Total de testes do usuário ${userId}:`, todosOsTestes.length);
+    
+    res.json(todosOsTestes);
   } catch (error) {
-    console.error('Erro ao buscar resultados:', error);
+    console.error('❌ Erro ao buscar resultados:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Erro interno do servidor'
+      message: 'Erro interno do servidor',
+      error: error.message
     });
   }
 });
@@ -187,7 +243,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
                   select: {
                     id: true,
                     texto: true,
-                    ordem: true
+                    ordem: true,
+                    categoria_id: true
                   }
                 },
                 possibilidade: {

@@ -1,0 +1,134 @@
+.teste-disc-container {
+  min-height: 100vh;
+  background: #f0f2f5;
+  padding: 20px;
+}
+
+.disc-card-opcao {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.disc-card-opcao:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.disc-opcao-selecionada-mais {
+  background-color: #f6ffed;
+  border-color: #52c41a !important;
+  border-width: 2px;
+}
+
+.disc-opcao-selecionada-menos {
+  background-color: #fff1f0;
+  border-color: #ff4d4f !important;
+  border-width: 2px;
+}
+
+.disc-fator-tag {
+  font-weight: bold;
+  font-size: 14px;
+  padding: 4px 12px;
+}
+
+.disc-questao-header {
+  background: linear-gradient(90deg, #1890ff 0%, #52c41a 100%);
+  color: white;
+  padding: 16px;
+  border-radius: 8px 8px 0 0;
+  margin: -20px -20px 20px -20px;
+}
+
+.disc-progresso-container {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsividade Mobile */
+@media (max-width: 768px) {
+  .teste-disc-container {
+    padding: 10px;
+  }
+  
+  .ant-card {
+    margin: 10px auto !important;
+    padding: 12px !important;
+  }
+  
+  .ant-card-body {
+    padding: 16px !important;
+  }
+  
+  .ant-radio-wrapper {
+    font-size: 14px !important;
+    padding: 8px 10px !important;
+  }
+  
+  .ant-typography {
+    font-size: 14px !important;
+  }
+  
+  h4.ant-typography {
+    font-size: 16px !important;
+  }
+  
+  h5.ant-typography {
+    font-size: 15px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .ant-btn {
+    font-size: 14px !important;
+    height: 36px !important;
+  }
+  
+  .ant-space-vertical {
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .teste-disc-container {
+    padding: 5px;
+  }
+  
+  .ant-card {
+    margin: 5px auto !important;
+    padding: 8px !important;
+  }
+  
+  .ant-card-body {
+    padding: 12px !important;
+  }
+  
+  .ant-radio-wrapper {
+    font-size: 13px !important;
+    padding: 6px 8px !important;
+  }
+  
+  h4.ant-typography {
+    font-size: 15px !important;
+  }
+  
+  h5.ant-typography {
+    font-size: 14px !important;
+  }
+}
+
+.disc-botao-navegacao {
+  min-width: 120px;
+}
+
+@media (max-width: 768px) {
+  .disc-card-opcao {
+    margin-bottom: 16px;
+  }
+  
+  .teste-disc-container {
+    padding: 10px;
+  }
+}

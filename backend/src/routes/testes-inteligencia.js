@@ -1,9 +1,109 @@
+
 import express from 'express';
 import { PrismaClient } from '../generated/prisma/index.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, isAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// GET /api/testes-inteligencia/admin - Listar todos os testes concluídos (admin)
+router.get('/admin', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { limit = 100, offset = 0 } = req.query;
+    const testes = await prisma.testeInteligencia.findMany({
+      where: { concluido: true },
+      include: {
+        usuario: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            avatar_url: true
+          }
+        },
+        resultados: {
+          include: {
+            categoria: {
+              include: {
+                perguntas: {
+                  include: {
+                    possibilidades: true
+                  }
+                }
+              },
+              // Força o relacionamento correto
+              // as: 'perguntas' // não necessário, nome já está correto
+            }
+          },
+          orderBy: { percentual: 'desc' },
+          take: 1
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      take: parseInt(limit),
+      skip: parseInt(offset)
+    });
+    // Busca manualmente todas as perguntas ativas de cada categoria para garantir o cálculo correto
+    const categoriasPerguntas = {};
+    const categoriasIds = new Set();
+    testes.forEach(teste => {
+      teste.resultados.forEach(resultado => {
+        if (resultado.categoria && resultado.categoria.id) {
+          categoriasIds.add(resultado.categoria.id);
+        }
+      });
+    });
+    // Busca todas as perguntas ativas dessas categorias
+    const perguntasAtivas = await prisma.perguntaInteligencia.findMany({
+      where: {
+        categoria_id: { in: Array.from(categoriasIds) },
+        ativo: true
+      },
+      include: { possibilidades: true }
+    });
+    // Agrupa perguntas por categoria
+    perguntasAtivas.forEach(p => {
+      if (!categoriasPerguntas[p.categoria_id]) categoriasPerguntas[p.categoria_id] = [];
+      categoriasPerguntas[p.categoria_id].push(p);
+    });
+    // Calcula pontuação máxima usando as perguntas ativas
+    testes.forEach(teste => {
+      teste.resultados.forEach(resultado => {
+        if (resultado.categoria && resultado.categoria.id) {
+          const perguntas = categoriasPerguntas[resultado.categoria.id] || [];
+          let valorMax = 5;
+          if (perguntas.length > 0) {
+            valorMax = Math.max(...perguntas.map(p => {
+              if (p.possibilidades && p.possibilidades.length > 0) {
+                return Math.max(...p.possibilidades.map(poss => poss.valor));
+              }
+              return 5;
+            }));
+          }
+          resultado.pontuacao_maxima = perguntas.length * valorMax;
+        } else {
+          resultado.pontuacao_maxima = 35;
+        }
+      });
+    });
+    const total = await prisma.testeInteligencia.count({ where: { concluido: true } });
+    // Log de depuração: pontuacao_maxima de cada resultado
+    testes.forEach(teste => {
+      teste.resultados.forEach(resultado => {
+        console.log('API ADMIN - Categoria:', resultado.categoria?.nome, '| pontuacao_maxima:', resultado.pontuacao_maxima);
+      });
+    });
+    res.json({
+      success: true,
+      data: testes,
+      meta: { total, limit: parseInt(limit), offset: parseInt(offset) }
+    });
+  } catch (error) {
+    console.error('Erro ao listar testes (admin):', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
 
 // GET /api/testes-inteligencia/verificar - Verifica se o usuário já fez o teste de inteligências
 router.get('/verificar', authenticateToken, async (req, res) => {
@@ -15,11 +115,13 @@ router.get('/verificar', authenticateToken, async (req, res) => {
         message: 'Parâmetro usuario_id ausente ou inválido.'
       });
     }
-    // Busca por teste concluído do usuário
+    // Busca por teste concluído E autorizado do usuário
+    // Se o teste não está autorizado, o usuário pode fazer novamente
     const teste = await prisma.testeInteligencia.findFirst({
       where: {
         usuario_id: parseInt(usuario_id),
-        concluido: true
+        concluido: true,
+        autorizado: true
       },
       orderBy: {
         created_at: 'desc'
@@ -27,7 +129,8 @@ router.get('/verificar', authenticateToken, async (req, res) => {
     });
     res.json({
       success: true,
-      jaFez: !!teste
+      jaFez: !!teste,
+      podeRefazer: !teste
     });
   } catch (error) {
     console.error('Erro ao verificar teste:', error);
@@ -96,16 +199,26 @@ router.post('/', async (req, res) => {
     let maiorPercentual = 0;
     for (const categoriaId in resultadosPorCategoria) {
       const dados = resultadosPorCategoria[categoriaId];
-      const totalPerguntasCategoria = perguntas.filter(p => p.categoria_id === parseInt(categoriaId)).length;
-      const valorMaximo = Math.max(...possibilidades.map(p => p.valor));
+      const perguntasDaCategoria = perguntas.filter(p => p.categoria_id === parseInt(categoriaId));
+      const perguntaIds = perguntasDaCategoria.map(p => p.id);
+      // Considera apenas possibilidades das perguntas da categoria
+      const possibilidadesDaCategoria = possibilidades.filter(p => perguntaIds.includes(p.pergunta_id));
+      const valorMaximo = possibilidadesDaCategoria.length > 0 ? Math.max(...possibilidadesDaCategoria.map(p => p.valor)) : 5;
+      const totalPerguntasCategoria = perguntasDaCategoria.length;
       const pontuacaoMaximaCategoria = totalPerguntasCategoria * valorMaximo;
-      const percentual = pontuacaoMaximaCategoria > 0 ? (dados.pontuacao / pontuacaoMaximaCategoria) * 100 : 0;
+      let percentual = 0;
+      if (pontuacaoMaximaCategoria > 0) {
+        percentual = (dados.pontuacao / pontuacaoMaximaCategoria) * 100;
+      }
+      // Corrige possíveis problemas de arredondamento
+      percentual = Math.max(0, Math.min(100, Math.round(percentual * 100) / 100));
+      console.log(`[RESULTADO] Categoria ${categoriaId} | Pontuação: ${dados.pontuacao} | Máxima: ${pontuacaoMaximaCategoria} | Percentual: ${percentual}`);
       await prisma.resultadoInteligencia.create({
         data: {
           teste_id: teste.id,
           categoria_id: parseInt(categoriaId),
           pontuacao: dados.pontuacao,
-          percentual: Math.round(percentual * 100) / 100
+          percentual
         }
       });
       pontuacaoTotal += dados.pontuacao;
@@ -184,6 +297,46 @@ router.put('/:id/autorizar', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Erro ao autorizar teste:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+// PUT /api/testes-inteligencia/usuario/:usuarioId/permitir-refazer - Permitir usuário refazer o teste
+router.put('/usuario/:usuarioId/permitir-refazer', authenticateToken, async (req, res) => {
+  try {
+    const usuarioId = parseInt(req.params.usuarioId);
+
+    if (isNaN(usuarioId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de usuário inválido'
+      });
+    }
+
+    // Marcar o teste mais recente como "não autorizado" para permitir refazer
+    // Não deletamos, apenas permitimos que façam outro
+    const testeRecente = await prisma.testeInteligencia.findFirst({
+      where: { usuario_id: usuarioId },
+      orderBy: { created_at: 'desc' }
+    });
+
+    if (testeRecente) {
+      await prisma.testeInteligencia.update({
+        where: { id: testeRecente.id },
+        data: { autorizado: false }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Usuário liberado para refazer o teste. O histórico anterior foi mantido.'
+    });
+
+  } catch (error) {
+    console.error('Erro ao permitir refazer teste:', error);
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'
@@ -355,6 +508,60 @@ router.get('/', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Erro ao listar testes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+// DELETE /api/testes-inteligencia/:id - Deletar teste e todos os dados relacionados
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const testeId = parseInt(req.params.id);
+    
+    if (isNaN(testeId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID do teste inválido'
+      });
+    }
+
+    // Verificar se o teste existe
+    const teste = await prisma.testeInteligencia.findUnique({
+      where: { id: testeId }
+    });
+
+    if (!teste) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teste não encontrado'
+      });
+    }
+
+    // Deletar em cascata (Prisma vai deletar automaticamente as relações se configurado)
+    // 1. Deletar respostas do teste
+    await prisma.respostaTesteInteligencia.deleteMany({
+      where: { teste_id: testeId }
+    });
+
+    // 2. Deletar resultados do teste
+    await prisma.resultadoInteligencia.deleteMany({
+      where: { teste_id: testeId }
+    });
+
+    // 3. Deletar o teste
+    await prisma.testeInteligencia.delete({
+      where: { id: testeId }
+    });
+
+    res.json({
+      success: true,
+      message: 'Teste deletado com sucesso'
+    });
+
+  } catch (error) {
+    console.error('Erro ao deletar teste:', error);
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'

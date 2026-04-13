@@ -1,9 +1,8 @@
 import express from 'express';
-import { PrismaClient } from '../generated/prisma/index.js';
+import prisma from '../config/prisma.js';
 import { authenticateToken, isAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // GET /api/categorias - Listar todas as categorias
 router.get('/', authenticateToken, async (req, res) => {
@@ -40,6 +39,74 @@ router.get('/', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao buscar categorias:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+// GET /api/categorias/dashboard/stats - Estatísticas completas para o painel
+// IMPORTANTE: Deve vir ANTES de /:id para não ser capturado como ID
+router.get('/dashboard/stats', authenticateToken, isAdmin, async (req, res) => {
+  console.log('📊 [STATS] Endpoint /dashboard/stats foi chamado!');
+  try {
+    // Total de categorias ativas
+    const totalCategorias = await prisma.categoria.count({
+      where: { ativo: true }
+    });
+
+    // Total de perguntas ativas
+    const totalPerguntas = await prisma.perguntaInteligencia.count({
+      where: { ativo: true }
+    });
+
+    // Total de possibilidades
+    const totalPossibilidades = await prisma.possibilidadeResposta.count({
+      where: { ativo: true }
+    });
+
+    // Total de testes realizados (resultados com pelo menos uma resposta)
+    const totalResultados = await prisma.testeInteligencia.count({
+      where: {
+        autorizado: true
+      }
+    });
+
+    // Testes de hoje
+    const inicioDoDia = new Date();
+    inicioDoDia.setHours(0, 0, 0, 0);
+    const fimDoDia = new Date();
+    fimDoDia.setHours(23, 59, 59, 999);
+
+    const testesHoje = await prisma.testeInteligencia.count({
+      where: {
+        created_at: {
+          gte: inicioDoDia,
+          lte: fimDoDia
+        }
+      }
+    });
+
+    // Taxa de conclusão
+    const totalInicializados = await prisma.testeInteligencia.count();
+    const taxaConclusao = totalInicializados > 0 
+      ? ((totalResultados / totalInicializados) * 100).toFixed(1)
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        totalCategorias,
+        totalPerguntas,
+        totalPossibilidades,
+        totalResultados,
+        testesHoje,
+        taxaConclusao: parseFloat(taxaConclusao)
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas do dashboard:', error);
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'
@@ -290,7 +357,7 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
-// GET /api/categorias/estatisticas - Estatísticas das categorias
+// GET /api/categorias/stats/resumo - Estatísticas das categorias
 router.get('/stats/resumo', authenticateToken, async (req, res) => {
   try {
     const totalCategorias = await prisma.categoria.count({

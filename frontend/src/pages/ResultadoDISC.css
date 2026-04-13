@@ -1,0 +1,82 @@
+.resultado-disc-container {
+  min-height: 100vh;
+  background: #f0f2f5;
+  padding: 20px;
+}
+
+.perfil-primario-card {
+  transition: all 0.3s ease;
+}
+
+.perfil-primario-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.disc-fator-card {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.disc-fator-header {
+  padding: 16px;
+  color: white;
+  font-weight: bold;
+  text-align: center;
+}
+
+.disc-estatistica-card {
+  text-align: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+}
+
+.disc-grafico-container {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.disc-caracteristica-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  border-left: 4px solid #141B2D;
+}
+
+.disc-ponto-forte {
+  border-left-color: #52c41a;
+}
+
+.disc-ponto-atencao {
+  border-left-color: #faad14;
+}
+
+.disc-tag-carreira {
+  padding: 6px 12px;
+  margin: 4px;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .resultado-disc-container {
+    padding: 10px;
+  }
+  
+  .disc-grafico-container {
+    padding: 16px;
+  }
+}
+
+@media print {
+  .resultado-disc-container {
+    background: white;
+  }
+  
+  button {
+    display: none;
+  }
+}

@@ -1,6 +1,31 @@
+model Projeto {
+  id                Int               @id @default(autoincrement())
+  nome              String
+  descricao         String?           @db.Text
+  cor               String?           @default("#3b82f6")
+  icone             String?           @default("📋")
+  tags              String[]          @default([])
+  status            String            @default("ativo")
+  tipo              String?           @default("geral")
+  data_inicio       DateTime?
+  data_meta         DateTime?
+  data_conclusao    DateTime?
+  usuario_id        Int?
+  template_id       Int?
+  visualizacao_padrao String?         @default("lista")
+  criado_em         DateTime          @default(now())
+  atualizado_em     DateTime          @updatedAt
+  usuario           Usuario?          @relation(fields: [usuario_id], references: [id], onDelete: SetNull)
+  template          TemplateProjeto?  @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  tasks             Task[]
+  anexos            AnexoProjeto[]
+
+  @@map("projetos")
+}
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -19,15 +44,47 @@ model Usuario {
   empresa           String?
   avatar_url        String?             @map("avatar_url")
   curriculo_url     String?             @map("curriculo_url")
+  linkedin_url      String?             @map("linkedin_url")
+  portfolio_url     String?             @map("portfolio_url")
+  resumo_profissional String?           @db.Text
   created_at        DateTime            @default(now())
   status            String              @default("ativo")
-  tipo              String              @default("cliente")
+  tipo              String              @default("cliente") // pode ser admin, recrutador, etc
+  role              String              @default("USER")    // adicionado controle de papel (USER, CANDIDATE, ADMIN)
   updated_at        DateTime
+  googleAccounts      GoogleAccount[]
   agendamentos      Agendamento[]
   resultados        ResultadoTeste[]
   testes_inteligencia TesteInteligencia[]
+  testes_dominancia TesteDominancia[]
+  testes_disc       TesteDISC[]
+  projetos          Projeto[]
+  tasks_responsavel Task[]            @relation("TaskResponsavel")
+  tasks_criadas     Task[]            @relation("TaskCriador")
+  templates_criados TemplateProjeto[] @relation("TemplatesCriados")
+  comentarios       ComentarioTask[]  @relation("ComentariosTask")
+  links             Link[]
+  permissoes_testes PermissaoTeste[]
+  tarefas_casa      TarefaCasa[]      @relation("TarefasCasa")
+  tarefas_sessao_concluidas TarefaSessaoConcluida[] @relation("TarefasSessaoConcluidas")
+  candidaturas      JobApplication[]  @relation("Candidaturas")
 
   @@map("usuarios")
+}
+
+model GoogleAccount {
+  id            Int      @id @default(autoincrement())
+  email         String
+  access_token  String
+  refresh_token String
+  token_expiry  DateTime?
+  user          Usuario  @relation(fields: [userId], references: [id])
+  userId        Int
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  is_active     Boolean  @default(true)
+  @@unique([email, userId])
+  @@map("google_accounts")
 }
 
 model Teste {
@@ -84,20 +141,63 @@ model ResultadoTeste {
   @@map("resultados_teste")
 }
 
+model PermissaoTeste {
+  id                Int      @id @default(autoincrement())
+  usuario_id        Int      @map("usuario_id")
+  tipo_teste        String   @map("tipo_teste") // 'disc', 'dominancia', 'inteligencias'
+  liberado          Boolean  @default(false)
+  criado_em         DateTime @default(now()) @map("criado_em")
+  atualizado_em     DateTime @updatedAt @map("atualizado_em")
+  usuario           Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@unique([usuario_id, tipo_teste])
+  @@map("permissoes_testes")
+}
+
 model Agendamento {
-  id              Int      @id @default(autoincrement())
-  usuario_id      Int      @map("usuario_id")
-  titulo          String
-  descricao       String?
-  data_hora       DateTime @map("data_hora")
-  duracao_minutos Int      @default(60) @map("duracao_minutos")
-  status          String   @default("agendado")
-  tipo            String   @default("sessao")
-  criado_em       DateTime @default(now()) @map("criado_em")
-  atualizado_em   DateTime @updatedAt @map("atualizado_em")
-  usuario         Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  id                       Int       @id @default(autoincrement())
+  usuario_id               Int       @map("usuario_id")
+  titulo                   String
+  descricao                String?
+  data_hora                DateTime  @map("data_hora")
+  duracao_minutos          Int       @default(60) @map("duracao_minutos")
+  status                   String    @default("agendado")
+  tipo                     String    @default("sessao")
+  
+  // Campos de relatório/detalhes da sessão
+  resumo_sessao            String?   @db.Text
+  objetivos_alcancados     String?   @db.Text
+  proximos_passos          String?   @db.Text
+  observacoes_profissional String?   @db.Text
+  avaliacao_progresso      Int?      // Escala de 1 a 5
+  pontos_positivos         String?   @db.Text
+  pontos_atencao           String?   @db.Text
+  recomendacoes            String?   @db.Text
+  proxima_sessao_sugerida  DateTime? @map("proxima_sessao_sugerida")
+  anexos                   String?   // JSON array com URLs dos arquivos
+  visivel_cliente          Boolean   @default(true) @map("visivel_cliente")
+  sala_video_url           String?   @map("sala_video_url")  // URL da sala Jitsi para videochamada
+  
+  criado_em                DateTime  @default(now()) @map("criado_em")
+  atualizado_em            DateTime  @updatedAt @map("atualizado_em")
+  usuario                  Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  sessoes                  Sessao[]
 
   @@map("agendamentos")
+}
+
+model Sessao {
+  id                Int         @id @default(autoincrement())
+  agendamento_id    Int         @map("agendamento_id")
+  registro_sessao   String      @db.Text
+  tarefa_casa       String?     @db.Text
+  observacoes       String?     @db.Text
+  documentos        String?     // JSON array com nomes dos arquivos
+  criado_em         DateTime    @default(now()) @map("criado_em")
+  atualizado_em     DateTime    @updatedAt @map("atualizado_em")
+  agendamento       Agendamento @relation(fields: [agendamento_id], references: [id], onDelete: Cascade)
+
+  @@map("sessoes")
 }
 
 // Modelos para Múltiplas Inteligências
@@ -215,4 +315,449 @@ model ConfiguracaoTeste {
   updated_at           DateTime @updatedAt
 
   @@map("configuracao_teste")
+}
+
+// ============================================
+// TESTE DE DOMINÂNCIA CEREBRAL
+// ============================================
+
+model QuestaoDominancia {
+  id                Int                 @id @default(autoincrement())
+  numero            Int                 // 1 a 8
+  titulo            String              // ex: "Atividades de minha preferência na infância"
+  instrucao         String              // ex: "assinale 4 opções com um X"
+  ordem             Int
+  ativo             Boolean             @default(true)
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  opcoes            OpcaoDominancia[]
+  respostas         RespostaDominancia[]
+
+  @@map("questoes_dominancia")
+}
+
+model OpcaoDominancia {
+  id                Int                 @id @default(autoincrement())
+  questao_id        Int
+  numero            Int                 // 1 a 16 dentro da questão
+  texto             String              // ex: "Aeromodelismo"
+  quadrante         String              // SE, SD, IE, ID
+  grupo             Int?                // Para questões com grupos (1, 2, 3, 4)
+  ordem             Int
+  ativo             Boolean             @default(true)
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  questao           QuestaoDominancia   @relation(fields: [questao_id], references: [id], onDelete: Cascade)
+  respostas         RespostaDominancia[]
+
+  @@map("opcoes_dominancia")
+}
+
+model TesteDominancia {
+  id                Int                 @id @default(autoincrement())
+  usuario_id        Int
+  concluido         Boolean             @default(false)
+  autorizado        Boolean             @default(true)
+  pontuacao_se      Int                 @default(0) // Superior Esquerdo
+  pontuacao_sd      Int                 @default(0) // Superior Direito
+  pontuacao_ie      Int                 @default(0) // Inferior Esquerdo
+  pontuacao_id      Int                 @default(0) // Inferior Direito
+  perfil_dominante  String?             // SE, SD, IE, ID ou combinação
+  percentual_se     Float               @default(0)
+  percentual_sd     Float               @default(0)
+  percentual_ie     Float               @default(0)
+  percentual_id     Float               @default(0)
+  iniciado_em       DateTime            @default(now())
+  concluido_em      DateTime?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  usuario           Usuario             @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  respostas         RespostaDominancia[]
+
+  @@map("testes_dominancia")
+}
+
+model RespostaDominancia {
+  id                Int                 @id @default(autoincrement())
+  teste_id          Int
+  questao_id        Int
+  opcao_id          Int
+  created_at        DateTime            @default(now())
+  teste             TesteDominancia     @relation(fields: [teste_id], references: [id], onDelete: Cascade)
+  questao           QuestaoDominancia   @relation(fields: [questao_id], references: [id], onDelete: Cascade)
+  opcao             OpcaoDominancia     @relation(fields: [opcao_id], references: [id], onDelete: Cascade)
+
+  @@map("respostas_dominancia")
+}
+
+// Modelo para Contatos da Landing Page
+model Contato {
+  id                Int                 @id @default(autoincrement())
+  nome              String
+  email             String
+  telefone          String?
+  mensagem          String              @db.Text
+  status            String              @default("novo") // novo, lido, respondido
+  impulso           Boolean             @default(false) // Flag para identificar origem do IMPULSO
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+
+  @@map("contatos")
+}
+
+// ============================================
+// TESTE DISC (Dominância, Influência, Estabilidade, Conformidade)
+// ============================================
+
+model QuestaoDISC {
+  id                Int                 @id @default(autoincrement())
+  numero            Int                 @unique // 1 a 24
+  instrucao         String              // "Escolha a palavra que MAIS descreve você e a que MENOS descreve você"
+  ordem             Int
+  ativo             Boolean             @default(true)
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  opcoes            OpcaoDISC[]
+  respostas         RespostaDISC[]
+
+  @@map("questoes_disc")
+}
+
+model OpcaoDISC {
+  id                Int                 @id @default(autoincrement())
+  questao_id        Int
+  texto             String              // ex: "Determinado", "Sociável", "Paciente", "Analítico"
+  fator             String              // D, I, S, ou C
+  ordem             Int                 // 1 a 4
+  ativo             Boolean             @default(true)
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  questao           QuestaoDISC         @relation(fields: [questao_id], references: [id], onDelete: Cascade)
+  respostas_mais    RespostaDISC[]      @relation("OpcaoMais")
+  respostas_menos   RespostaDISC[]      @relation("OpcaoMenos")
+
+  @@map("opcoes_disc")
+}
+
+model TesteDISC {
+  id                Int                 @id @default(autoincrement())
+  usuario_id        Int
+  concluido         Boolean             @default(false)
+  autorizado        Boolean             @default(true)
+  pontuacao_d       Int                 @default(0) // Dominância
+  pontuacao_i       Int                 @default(0) // Influência
+  pontuacao_s       Int                 @default(0) // Estabilidade
+  pontuacao_c       Int                 @default(0) // Conformidade
+  perfil_primario   String?             // D, I, S ou C
+  perfil_secundario String?             // Segunda maior pontuação
+  percentual_d      Float               @default(0)
+  percentual_i      Float               @default(0)
+  percentual_s      Float               @default(0)
+  percentual_c      Float               @default(0)
+  estilo_combinado  String?             // ex: "DI", "SC", etc
+  iniciado_em       DateTime            @default(now())
+  concluido_em      DateTime?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  usuario           Usuario             @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  respostas         RespostaDISC[]
+
+  @@map("testes_disc")
+}
+
+model RespostaDISC {
+  id                Int                 @id @default(autoincrement())
+  teste_id          Int
+  questao_id        Int
+  opcao_mais_id     Int                 // Opção que MAIS descreve
+  opcao_menos_id    Int                 // Opção que MENOS descreve
+  created_at        DateTime            @default(now())
+  teste             TesteDISC           @relation(fields: [teste_id], references: [id], onDelete: Cascade)
+  questao           QuestaoDISC         @relation(fields: [questao_id], references: [id], onDelete: Cascade)
+  opcao_mais        OpcaoDISC           @relation("OpcaoMais", fields: [opcao_mais_id], references: [id])
+  opcao_menos       OpcaoDISC           @relation("OpcaoMenos", fields: [opcao_menos_id], references: [id])
+
+  @@unique([teste_id, questao_id])
+  @@map("respostas_disc")
+}
+
+// ============================================
+// GESTÃO DE PROJETOS / KANBAN
+// ============================================
+
+enum TaskStatus {
+  PLANEJADO
+  EM_DESENVOLVIMENTO
+  EM_TESTE
+  CONCLUIDO
+  CANCELADO
+}
+
+enum TaskPrioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+model Task {
+  id               Int              @id @default(autoincrement())
+  projeto_id       Int?
+  titulo           String
+  descricao        String?          @db.Text
+  status           TaskStatus       @default(PLANEJADO)
+  prioridade       TaskPrioridade   @default(MEDIA)
+  data_inicio      DateTime?
+  data_prevista    DateTime?
+  data_conclusao   DateTime?
+  tags             String[]         @default([])
+  responsavel      String?
+  responsavel_id   Int?
+  usuario_id       Int?
+  parent_id        Int?
+  ordem            Int              @default(0)
+  progresso        Int              @default(0)
+  tempo_estimado   Int?
+  anexos           String[]         @default([])
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
+  projeto          Projeto?         @relation(fields: [projeto_id], references: [id], onDelete: Cascade)
+  usuario_responsavel Usuario?      @relation("TaskResponsavel", fields: [responsavel_id], references: [id], onDelete: SetNull)
+  criador          Usuario?         @relation("TaskCriador", fields: [usuario_id], references: [id], onDelete: SetNull)
+  parent           Task?            @relation("Subtasks", fields: [parent_id], references: [id], onDelete: Cascade)
+  subtasks         Task[]           @relation("Subtasks")
+  comentarios      ComentarioTask[]
+
+  @@map("tasks")
+}
+
+model TemplateProjeto {
+  id               Int      @id @default(autoincrement())
+  nome             String
+  descricao        String?  @db.Text
+  icone            String?  @default("📋")
+  cor              String?  @default("#3b82f6")
+  tipo             String   @default("geral")
+  tasks_template   String?  @db.Text
+  is_publico       Boolean  @default(true)
+  usuario_id       Int?
+  criado_em        DateTime @default(now())
+  atualizado_em    DateTime @updatedAt
+  usuario          Usuario? @relation("TemplatesCriados", fields: [usuario_id], references: [id], onDelete: SetNull)
+  projetos         Projeto[]
+
+  @@map("templates_projetos")
+}
+
+model ComentarioTask {
+  id         Int      @id @default(autoincrement())
+  task_id    Int
+  usuario_id Int
+  conteudo   String   @db.Text
+  criado_em  DateTime @default(now())
+  task       Task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  usuario    Usuario  @relation("ComentariosTask", fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@map("comentarios_tasks")
+}
+
+model AnexoProjeto {
+  id         Int      @id @default(autoincrement())
+  projeto_id Int
+  nome       String
+  url        String
+  tipo       String?
+  tamanho    Int?
+  criado_em  DateTime @default(now())
+  projeto    Projeto  @relation(fields: [projeto_id], references: [id], onDelete: Cascade)
+
+  @@map("anexos_projetos")
+}
+
+model Link {
+  id            Int         @id @default(autoincrement())
+  titulo        String
+  url           String
+  icone         String?     @default("🔗")
+  imagem_url    String?
+  descricao     String?
+  cor           String?     @default("#1890ff")
+  ordem         Int         @default(0)
+  ativo         Boolean     @default(true)
+  usuario_id    Int?
+  usuario       Usuario?    @relation(fields: [usuario_id], references: [id], onDelete: SetNull)
+  clicks        ClickLog[]
+  criado_em     DateTime    @default(now())
+  atualizado_em DateTime    @updatedAt
+
+  @@map("links")
+}
+
+model ClickLog {
+  id           Int      @id @default(autoincrement())
+  link_id      Int
+  ip_address   String?
+  user_agent   String?
+  referer      String?
+  pais         String?
+  cidade       String?
+  clicked_at   DateTime @default(now())
+  link         Link     @relation(fields: [link_id], references: [id], onDelete: Cascade)
+
+  @@map("click_logs")
+  @@index([link_id])
+  @@index([clicked_at])
+}
+
+model TarefaCasa {
+  id            Int      @id @default(autoincrement())
+  usuario_id    Int      @map("usuario_id")
+  titulo        String
+  descricao     String?  @db.Text
+  data          DateTime
+  concluida     Boolean  @default(false)
+  criado_em     DateTime @default(now()) @map("criado_em")
+  atualizado_em DateTime @updatedAt @map("atualizado_em")
+  usuario       Usuario  @relation("TarefasCasa", fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@map("tarefas_casa")
+  @@index([usuario_id])
+}
+
+model TarefaSessaoConcluida {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int      @map("usuario_id")
+  sessao_id  Int      @map("sessao_id")
+  concluida  Boolean  @default(true)
+  criado_em  DateTime @default(now()) @map("criado_em")
+  usuario    Usuario  @relation("TarefasSessaoConcluidas", fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@unique([usuario_id, sessao_id])
+  @@map("tarefas_sessao_concluidas")
+  @@index([usuario_id])
+}
+
+// ========== E-COMMERCE / LOJA ==========
+
+model Produto {
+  id               Int      @id @default(autoincrement())
+  nome             String
+  slug             String   @unique
+  descricao        String   @db.Text
+  preco            Decimal  @db.Decimal(10, 2)
+  preco_original   Decimal? @db.Decimal(10, 2)
+  tipo_teste       String?  // 'disc', 'dominancia', 'inteligencias', 'combo'
+  icone            String?
+  ativo            Boolean  @default(true)
+  destaque         Boolean  @default(false)
+  features         String[] @default([])
+  ordem            Int      @default(0)
+  criado_em        DateTime @default(now()) @map("criado_em")
+  atualizado_em    DateTime @updatedAt @map("atualizado_em")
+  compras          Compra[]
+
+  @@map("produtos")
+  @@index([slug])
+  @@index([ativo])
+}
+
+model Compra {
+  id                  Int          @id @default(autoincrement())
+  usuario_id          Int?         @map("usuario_id")
+  produto_id          Int          @map("produto_id")
+  valor               Decimal      @db.Decimal(10, 2)
+  status              String       @default("pendente") // pendente, pago, cancelado, expirado
+  metodo_pagamento    String?      // pix, cartao, boleto
+  transaction_id      String?      @unique @map("transaction_id") // ID da Pagar.me
+  payment_url         String?      @db.Text @map("payment_url")
+  qr_code             String?      @db.Text @map("qr_code")
+  qr_code_url         String?      @db.Text @map("qr_code_url")
+  boleto_url          String?      @db.Text @map("boleto_url")
+  expires_at          DateTime?    @map("expires_at")
+  paid_at             DateTime?    @map("paid_at")
+  criado_em           DateTime     @default(now()) @map("criado_em")
+  atualizado_em       DateTime     @updatedAt @map("atualizado_em")
+  produto             Produto      @relation(fields: [produto_id], references: [id])
+  transacoes          Transacao[]
+
+  @@map("compras")
+  @@index([usuario_id])
+  @@index([status])
+  @@index([transaction_id])
+}
+
+model Transacao {
+  id                Int      @id @default(autoincrement())
+  compra_id         Int      @map("compra_id")
+  status            String   // pending, paid, refused, refunded
+  gateway_id        String   @map("gateway_id") // ID da transação no gateway
+  gateway_status    String?  @map("gateway_status")
+  raw_response      Json?    @map("raw_response")
+  criado_em         DateTime @default(now()) @map("criado_em")
+  compra            Compra   @relation(fields: [compra_id], references: [id], onDelete: Cascade)
+
+  @@map("transacoes")
+  @@index([compra_id])
+  @@index([gateway_id])
+}
+
+// ========== RECRUTAMENTO / VAGAS (FASE 2) ==========
+
+model Company {
+  id              Int              @id @default(autoincrement())
+  name            String
+  cnpj            String?          @unique
+  description     String?          @db.Text
+  logo_url        String?
+  website_url     String?
+  status          String           @default("ACTIVE") // ACTIVE, INACTIVE
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+  jobs            Job[]
+
+  @@map("companies")
+  @@index([status])
+}
+
+model Job {
+  id              Int              @id @default(autoincrement())
+  title           String
+  description     String           @db.Text
+  requirements    String?          @db.Text
+  benefits        String?          @db.Text
+  salary          Decimal?         @db.Decimal(10, 2)
+  type            String           @default("CLT") // CLT, PJ, FREELANCER, ESTAGIO
+  location        String?
+  modality        String           @default("REMOTE") // REMOTE, HYBRID, ONSITE
+  company_id      Int
+  status          String           @default("OPEN") // OPEN, CLOSED, DRAFT
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+  
+  company         Company          @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  applications    JobApplication[]
+
+  @@map("jobs")
+  @@index([status])
+  @@index([company_id])
+}
+
+model JobApplication {
+  id              Int              @id @default(autoincrement())
+  user_id         Int
+  job_id          Int
+  status          String           @default("APPLIED") // APPLIED, IN_REVIEW, INTERVIEW, HIRED, REJECTED
+  resume_url      String?          @db.Text // URL do PDF no S3
+  cover_letter    String?          @db.Text
+  applied_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+  
+  user            Usuario          @relation("Candidaturas", fields: [user_id], references: [id], onDelete: Cascade)
+  job             Job              @relation(fields: [job_id], references: [id], onDelete: Cascade)
+
+  @@map("job_applications")
+  @@index([user_id])
+  @@index([job_id])
+  @@index([status])
+  @@unique([user_id, job_id]) // Evita que o usuário se candidate duas vezes na mesma vaga
 }

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Typography, Progress, Spin, message, Button, Divider, Collapse } from 'antd';
 import { ArrowLeftOutlined, TrophyOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config/api';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -102,7 +103,7 @@ function ResultadosInteligencias() {
       setLoading(true);
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/resultados-inteligencias', {
+        const response = await fetch(`${API_BASE_URL}/api/resultados-inteligencias`, {
           headers: {
             'Authorization': token ? `Bearer ${token}` : '',
             'Content-Type': 'application/json',
@@ -331,16 +332,20 @@ function ResultadosInteligencias() {
                 {cat.caracteristicas_inteligente && (
                   <div style={{ margin: '10px 0' }}>
                     <b>Características da Inteligência:</b>
-                    <ul style={{ margin: '6px 0 0 18px', color: '#555', fontSize: 14, paddingLeft: 0 }}>
+                    <div style={{ margin: '6px 0 0 0', color: '#555', fontSize: 14 }}>
                       {(() => {
                         let lista = cat.caracteristicas_inteligente;
                         if (typeof lista === 'string') {
                           lista = lista.includes('\n') ? lista.split(/\r?\n/) : lista.split(',');
                         }
                         if (!Array.isArray(lista)) return null;
-                        return lista.map((c, i) => <li key={i} style={{ marginBottom: 4 }}>{c}</li>);
+                        return lista.map((c, i) => (
+                          <div key={i} style={{ marginBottom: 6, lineHeight: '1.6' }}>
+                            {c.trim()}
+                          </div>
+                        ));
                       })()}
-                    </ul>
+                    </div>
                   </div>
                 )}
 

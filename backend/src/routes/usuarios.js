@@ -288,4 +288,79 @@ router.get('/stats/overview', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
+// Obter permissões de testes de um usuário
+router.get('/:id/permissoes-testes', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const permissoes = await prisma.permissaoTeste.findMany({
+      where: { usuario_id: parseInt(id) }
+    });
+
+    // Converter para formato de objeto
+    const permissoesObj = {
+      disc: false,
+      dominancia: false,
+      inteligencias: false
+    };
+
+    permissoes.forEach(p => {
+      permissoesObj[p.tipo_teste] = p.liberado;
+    });
+
+    res.json(permissoesObj);
+  } catch (error) {
+    console.error('Erro ao buscar permissões:', error);
+    res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
+});
+
+// Atualizar permissões de testes de um usuário
+router.put('/:id/permissoes-testes', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { disc, dominancia, inteligencias } = req.body;
+
+    // Verificar se o usuário existe
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ erro: 'Usuário não encontrado' });
+    }
+
+    // Atualizar ou criar permissões
+    const tiposTeste = [
+      { tipo: 'disc', liberado: disc },
+      { tipo: 'dominancia', liberado: dominancia },
+      { tipo: 'inteligencias', liberado: inteligencias }
+    ];
+
+    for (const { tipo, liberado } of tiposTeste) {
+      await prisma.permissaoTeste.upsert({
+        where: {
+          usuario_id_tipo_teste: {
+            usuario_id: parseInt(id),
+            tipo_teste: tipo
+          }
+        },
+        update: {
+          liberado: liberado
+        },
+        create: {
+          usuario_id: parseInt(id),
+          tipo_teste: tipo,
+          liberado: liberado
+        }
+      });
+    }
+
+    res.json({ mensagem: 'Permissões atualizadas com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar permissões:', error);
+    res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
+});
+
 export default router;

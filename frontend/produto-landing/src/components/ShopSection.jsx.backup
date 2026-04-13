@@ -1,0 +1,345 @@
+import React, { useState } from 'react';
+
+function ShopSection() {
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  const products = [
+    {
+      id: 'basico',
+      name: 'Curso IMPULSO - Módulo Básico',
+      price: 497.00,
+      description: 'Orientação de carreira completa com 4 sessões individuais, testes psicológicos e plano de ação personalizado',
+      icon: '�',
+      features: [
+        '4 sessões individuais de 1h',
+        '3 testes psicológicos completos',
+        'Relatórios detalhados em PDF',
+        'Plano de ação personalizado',
+        'Suporte via WhatsApp',
+        'Certificado de conclusão'
+      ]
+    },
+    {
+      id: 'avancado',
+      name: 'Curso IMPULSO - Módulo Avançado',
+      price: 897.00,
+      originalPrice: 997.00,
+      description: 'Programa completo de desenvolvimento de carreira com 8 sessões, mentoria exclusiva e acompanhamento por 3 meses',
+      icon: '🚀',
+      badge: 'MAIS COMPLETO',
+      features: [
+        '8 sessões individuais de 1h',
+        '3 testes psicológicos completos',
+        'Mentoria exclusiva por 3 meses',
+        'Relatórios e análises integradas',
+        'Suporte prioritário',
+        'Workshop ao vivo mensal',
+        'Rede de networking exclusiva',
+        'Certificado premium'
+      ],
+      highlight: true
+    },
+    {
+      id: 'avulsa',
+      name: 'Sessão Avulsa - Orientação de Carreira',
+      price: 147.00,
+      description: 'Uma sessão individual de 1 hora para tirar dúvidas, revisar currículo ou receber orientações pontuais',
+      icon: '💼',
+      features: [
+        '1 sessão individual de 1h',
+        'Análise de currículo',
+        'Orientação de LinkedIn',
+        'Estratégias de busca de emprego',
+        'Relatório pós-sessão'
+      ]
+    }
+  ];
+
+  const handleBuy = (product) => {
+    // TODO: Integrar com checkout/Pagar.me
+    console.log('Comprando:', product);
+    alert(`Em breve: Checkout do ${product.name}`);
+  };
+
+  return (
+    <section className="shop-section">
+      <div className="shop-container">
+        <div className="shop-header">
+          <h2 className="shop-title">Escolha o Programa Ideal Para Você</h2>
+          <p className="shop-subtitle">
+            Invista no seu desenvolvimento profissional com orientação especializada e metodologia comprovada
+          </p>
+        </div>
+
+        <div className="shop-grid">
+          {products.map((product) => (
+            <div 
+              key={product.id} 
+              className={`shop-card ${product.highlight ? 'shop-card-highlight' : ''}`}
+            >
+              {product.badge && (
+                <div className="shop-badge">{product.badge}</div>
+              )}
+              
+              <div className="shop-card-icon">{product.icon}</div>
+              
+              <h3 className="shop-card-title">{product.name}</h3>
+              
+              <div className="shop-card-price">
+                {product.originalPrice && (
+                  <span className="shop-price-original">R$ {product.originalPrice.toFixed(2)}</span>
+                )}
+                <span className="shop-price-current">R$ {product.price.toFixed(2)}</span>
+              </div>
+              
+              <p className="shop-card-description">{product.description}</p>
+              
+              <ul className="shop-card-features">
+                {product.features.map((feature, index) => (
+                  <li key={index}>
+                    <span className="feature-check">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              
+              <button 
+                className={`shop-buy-btn ${product.highlight ? 'shop-buy-btn-highlight' : ''}`}
+                onClick={() => handleBuy(product)}
+              >
+                Comprar Agora
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="shop-guarantee">
+          <div className="guarantee-icon">🔒</div>
+          <div className="guarantee-text">
+            <strong>Compra 100% Segura</strong>
+            <p>Pagamento processado pela Stone (Pagar.me) | Dados protegidos com criptografia SSL</p>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .shop-section {
+          padding: 80px 20px;
+          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .shop-container {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .shop-header {
+          text-align: center;
+          margin-bottom: 60px;
+        }
+
+        .shop-title {
+          font-size: 42px;
+          font-weight: 800;
+          color: #1a1d2e;
+          margin-bottom: 16px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .shop-subtitle {
+          font-size: 18px;
+          color: #666;
+          max-width: 600px;
+          margin: 0 auto;
+        }
+
+        .shop-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 30px;
+          margin-bottom: 60px;
+        }
+
+        .shop-card {
+          background: white;
+          border-radius: 20px;
+          padding: 40px 30px;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .shop-card:hover {
+          transform: translateY(-10px);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .shop-card-highlight {
+          border: 3px solid #667eea;
+          transform: scale(1.05);
+        }
+
+        .shop-card-highlight:hover {
+          transform: scale(1.05) translateY(-10px);
+        }
+
+        .shop-badge {
+          position: absolute;
+          top: -15px;
+          right: 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 700;
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .shop-card-icon {
+          font-size: 64px;
+          text-align: center;
+          margin-bottom: 20px;
+        }
+
+        .shop-card-title {
+          font-size: 24px;
+          font-weight: 700;
+          color: #1a1d2e;
+          text-align: center;
+          margin-bottom: 16px;
+        }
+
+        .shop-card-price {
+          text-align: center;
+          margin-bottom: 16px;
+        }
+
+        .shop-price-original {
+          display: block;
+          font-size: 16px;
+          color: #999;
+          text-decoration: line-through;
+          margin-bottom: 4px;
+        }
+
+        .shop-price-current {
+          display: block;
+          font-size: 36px;
+          font-weight: 800;
+          color: #667eea;
+        }
+
+        .shop-card-description {
+          font-size: 14px;
+          color: #666;
+          text-align: center;
+          margin-bottom: 24px;
+          line-height: 1.6;
+        }
+
+        .shop-card-features {
+          list-style: none;
+          padding: 0;
+          margin: 0 0 30px 0;
+          flex: 1;
+        }
+
+        .shop-card-features li {
+          font-size: 14px;
+          color: #444;
+          margin-bottom: 12px;
+          display: flex;
+          align-items: flex-start;
+          line-height: 1.5;
+        }
+
+        .feature-check {
+          color: #4FD1C5;
+          font-weight: 700;
+          margin-right: 8px;
+          font-size: 16px;
+        }
+
+        .shop-buy-btn {
+          width: 100%;
+          padding: 16px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          border-radius: 12px;
+          font-size: 16px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .shop-buy-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .shop-buy-btn-highlight {
+          background: linear-gradient(135deg, #4FD1C5 0%, #3DBFB3 100%);
+        }
+
+        .shop-guarantee {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 20px;
+          background: white;
+          padding: 30px;
+          border-radius: 16px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .guarantee-icon {
+          font-size: 48px;
+        }
+
+        .guarantee-text strong {
+          display: block;
+          font-size: 18px;
+          color: #1a1d2e;
+          margin-bottom: 4px;
+        }
+
+        .guarantee-text p {
+          font-size: 14px;
+          color: #666;
+          margin: 0;
+        }
+
+        @media (max-width: 768px) {
+          .shop-title {
+            font-size: 32px;
+          }
+
+          .shop-subtitle {
+            font-size: 16px;
+          }
+
+          .shop-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .shop-card-highlight {
+            transform: scale(1);
+          }
+
+          .shop-guarantee {
+            flex-direction: column;
+            text-align: center;
+          }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+export default ShopSection;

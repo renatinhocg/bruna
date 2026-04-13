@@ -41,19 +41,39 @@ router.post('/cadastro', async (req, res) => {
     // Hash da senha
     const senhaHash = await bcrypt.hash(senha, 10);
     
-    // Criar usuário
-    const novoUsuario = await prisma.usuario.create({
-      data: {
-        nome,
-        email,
-        senha_hash: senhaHash,
-        telefone: telefone || null
-      }
+    // Criar usuário e permissões em uma transação
+    const resultado = await prisma.$transaction(async (tx) => {
+      // Criar usuário
+      const novoUsuario = await tx.usuario.create({
+        data: {
+          nome,
+          email,
+          senha_hash: senhaHash,
+          telefone: telefone || null,
+          updated_at: new Date()
+        }
+      });
+
+      // Criar permissões para todos os testes (desabilitados por padrão)
+      const tiposTeste = ['disc', 'dominancia', 'inteligencias'];
+      await Promise.all(
+        tiposTeste.map(tipo =>
+          tx.permissaoTeste.create({
+            data: {
+              usuario_id: novoUsuario.id,
+              tipo_teste: tipo,
+              liberado: false
+            }
+          })
+        )
+      );
+
+      return novoUsuario;
     });
     
     // Gerar token
     const token = jwt.sign(
-      { id: novoUsuario.id, email: novoUsuario.email },
+      { id: resultado.id, email: resultado.email, tipo: resultado.tipo },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
@@ -61,9 +81,9 @@ router.post('/cadastro', async (req, res) => {
     res.status(201).json({
       token,
       usuario: {
-        id: novoUsuario.id,
-        email: novoUsuario.email,
-        nome: novoUsuario.nome
+        id: resultado.id,
+        email: resultado.email,
+        nome: resultado.nome
       }
     });
     
@@ -95,7 +115,7 @@ router.post('/login', async (req, res) => {
     
     // Gerar token
     const token = jwt.sign(
-      { id: usuario.id, email: usuario.email },
+      { id: usuario.id, email: usuario.email, tipo: usuario.tipo },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  Form, 
-  Input, 
-  Button, 
-  Typography, 
-  Row, 
+import {
+  Card,
+  Form,
+  Input,
+  Button,
+  Typography,
+  Row,
   Col,
   Avatar,
   Divider,
@@ -14,6 +14,7 @@ import {
   Spin
 } from 'antd';
 import { UserOutlined, EditOutlined, SaveOutlined, CameraOutlined, LoadingOutlined } from '@ant-design/icons';
+import API_BASE_URL from '../config/api';
 
 const { Title } = Typography;
 
@@ -33,16 +34,16 @@ const MeuPerfil = () => {
       setLoading(true);
       const usuario = JSON.parse(localStorage.getItem('usuario'));
       const token = localStorage.getItem('token');
-      
+
       console.log('Usuário do localStorage:', usuario);
       console.log('Token disponível:', token ? 'Sim' : 'Não');
-      
+
       if (usuario?.id && token) {
         // Primeiro tenta o endpoint específico do perfil do usuário
         let response;
         try {
           console.log('Tentando endpoint de perfil próprio...');
-          response = await fetch(`http://localhost:8002/api/usuarios/perfil`, {
+          response = await fetch(`${API_BASE_URL}/api/usuarios/perfil`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -62,11 +63,14 @@ const MeuPerfil = () => {
             experiencia: usuario.experiencia || '',
             objetivos: usuario.objetivos || '',
             biografia: usuario.biografia || '',
-            avatar_url: usuario.avatar_url || ''
+            avatar_url: usuario.avatar_url || '',
+            linkedin_url: usuario.linkedin_url || '',
+            portfolio_url: usuario.portfolio_url || '',
+            resumo_profissional: usuario.resumo_profissional || ''
           });
           return;
         }
-        
+
         if (response && response.ok) {
           const data = await response.json();
           console.log('Dados do perfil carregados via API:', data);
@@ -84,7 +88,10 @@ const MeuPerfil = () => {
             experiencia: usuario.experiencia || '',
             objetivos: usuario.objetivos || '',
             biografia: usuario.biografia || '',
-            avatar_url: usuario.avatar_url || ''
+            avatar_url: usuario.avatar_url || '',
+            linkedin_url: usuario.linkedin_url || '',
+            portfolio_url: usuario.portfolio_url || '',
+            resumo_profissional: usuario.resumo_profissional || ''
           });
         }
       } else {
@@ -106,7 +113,10 @@ const MeuPerfil = () => {
           experiencia: usuario.experiencia || '',
           objetivos: usuario.objetivos || '',
           biografia: usuario.biografia || '',
-          avatar_url: usuario.avatar_url || ''
+          avatar_url: usuario.avatar_url || '',
+          linkedin_url: usuario.linkedin_url || '',
+          portfolio_url: usuario.portfolio_url || '',
+          resumo_profissional: usuario.resumo_profissional || ''
         });
       }
     } finally {
@@ -119,13 +129,13 @@ const MeuPerfil = () => {
     try {
       const formData = new FormData();
       formData.append('avatar', file);
-      
+
       const usuario = JSON.parse(localStorage.getItem('usuario'));
       const token = localStorage.getItem('token');
-      
-      console.log('Fazendo upload para:', `http://localhost:8002/api/arquivos/avatar/${usuario.id}`);
-      
-      const response = await fetch(`http://localhost:8002/api/arquivos/avatar/${usuario.id}`, {
+
+      console.log('Fazendo upload para:', `${API_BASE_URL}/api/arquivos/avatar/${usuario.id}`);
+
+      const response = await fetch(`${API_BASE_URL}/api/arquivos/avatar/${usuario.id}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -139,20 +149,20 @@ const MeuPerfil = () => {
 
       const data = await response.json();
       console.log('Resposta do upload:', data);
-      
+
       // Atualizar dados do perfil com nova foto
       const novaFotoUrl = data.avatar_url || data.url || data.imageUrl;
       setPerfilData(prev => ({ ...prev, avatar_url: novaFotoUrl }));
-      
+
       // Atualizar localStorage
       const usuarioAtualizado = { ...usuario, avatar_url: novaFotoUrl };
       localStorage.setItem('usuario', JSON.stringify(usuarioAtualizado));
-      
+
       // Disparar evento para atualizar o header
       window.dispatchEvent(new Event('profileUpdated'));
-      
+
       message.success('Foto atualizada com sucesso!');
-      
+
     } catch (error) {
       console.error('Erro no upload:', error);
       message.error('Erro ao fazer upload da foto');
@@ -172,10 +182,10 @@ const MeuPerfil = () => {
       setLoading(true);
       const usuario = JSON.parse(localStorage.getItem('usuario'));
       const token = localStorage.getItem('token');
-      
+
       // Tenta salvar via API
       try {
-        const response = await fetch(`http://localhost:8002/api/usuarios/perfil`, {
+        const response = await fetch(`${API_BASE_URL}/api/usuarios/perfil`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -188,29 +198,29 @@ const MeuPerfil = () => {
           const data = await response.json();
           setPerfilData(data);
           setEditing(false);
-          
+
           // Atualizar localStorage
           const usuarioAtualizado = { ...usuario, ...values };
           localStorage.setItem('usuario', JSON.stringify(usuarioAtualizado));
-          
+
           message.success('Perfil atualizado com sucesso!');
           return;
         }
       } catch (apiError) {
         console.log('Erro na API, salvando localmente:', apiError);
       }
-      
+
       // Fallback: salvar apenas no estado local e localStorage
       const dadosAtualizados = { ...perfilData, ...values };
       setPerfilData(dadosAtualizados);
       setEditing(false);
-      
+
       // Atualizar localStorage
       const usuarioAtualizado = { ...usuario, ...values };
       localStorage.setItem('usuario', JSON.stringify(usuarioAtualizado));
-      
+
       message.success('Perfil atualizado localmente!');
-      
+
     } catch (error) {
       console.error('Erro ao salvar:', error);
       message.error('Erro ao salvar dados do perfil');
@@ -237,15 +247,15 @@ const MeuPerfil = () => {
       <Title level={2}>
         <UserOutlined /> Meu Perfil
       </Title>
-      
+
       <Row gutter={24}>
         <Col span={8}>
           <Card>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
-                <Avatar 
-                  size={120} 
-                  src={perfilData.avatar_url} 
+                <Avatar
+                  size={120}
+                  src={perfilData.avatar_url}
                   icon={!perfilData.avatar_url ? <UserOutlined /> : undefined}
                 />
                 <Upload
@@ -275,9 +285,9 @@ const MeuPerfil = () => {
               <Title level={4}>{perfilData.nome || 'Nome não informado'}</Title>
               <p style={{ color: '#666', marginBottom: 0 }}>{perfilData.profissao || 'Profissão não informada'}</p>
               <p style={{ color: '#666' }}>{perfilData.empresa || 'Empresa não informada'}</p>
-              
-              <Button 
-                type="primary" 
+
+              <Button
+                type="primary"
                 icon={<EditOutlined />}
                 onClick={handleEdit}
                 disabled={editing}
@@ -287,14 +297,14 @@ const MeuPerfil = () => {
             </div>
           </Card>
         </Col>
-        
+
         <Col span={16}>
-          <Card 
-            title="Informações Pessoais" 
+          <Card
+            title="Informações Pessoais"
             extra={
               editing && (
-                <Button 
-                  type="text" 
+                <Button
+                  type="text"
                   onClick={handleCancel}
                 >
                   Cancelar
@@ -372,9 +382,26 @@ const MeuPerfil = () => {
                   </Col>
                 </Row>
 
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item name="linkedin_url" label="URL do LinkedIn">
+                      <Input placeholder="https://linkedin.com/in/seu_perfil" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item name="portfolio_url" label="URL do Portfólio (Opcional)">
+                      <Input placeholder="https://seu_portfolio.com" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item name="resumo_profissional" label="Resumo Profissional (Para recrutadores)">
+                  <Input.TextArea rows={4} placeholder="Um resumo direcionado para as vagas que vai se candidatar" />
+                </Form.Item>
+
                 <Form.Item
                   name="objetivos"
-                  label="Objetivos Profissionais"
+                  label="Objetivos Pessoais/Coaching"
                 >
                   <Input.TextArea rows={3} />
                 </Form.Item>
@@ -387,8 +414,8 @@ const MeuPerfil = () => {
                 </Form.Item>
 
                 <Form.Item>
-                  <Button 
-                    type="primary" 
+                  <Button
+                    type="primary"
                     htmlType="submit"
                     icon={<SaveOutlined />}
                     block
@@ -409,18 +436,31 @@ const MeuPerfil = () => {
                     <p><strong>Profissão:</strong> {perfilData.profissao || 'Não informada'}</p>
                     <p><strong>Empresa:</strong> {perfilData.empresa || 'Não informada'}</p>
                     <p><strong>Experiência:</strong> {perfilData.experiencia || 'Não informada'}</p>
+                    {perfilData.linkedin_url && (
+                      <p><strong>LinkedIn:</strong> <a href={perfilData.linkedin_url} target="_blank" rel="noopener noreferrer">Acessar Perfil</a></p>
+                    )}
+                    {perfilData.portfolio_url && (
+                      <p><strong>Portfólio:</strong> <a href={perfilData.portfolio_url} target="_blank" rel="noopener noreferrer">Acessar Portfólio</a></p>
+                    )}
                   </Col>
                 </Row>
-                
+
                 <Divider />
-                
+
                 <div>
-                  <p><strong>Objetivos Profissionais:</strong></p>
+                  <p><strong>Resumo Profissional (Para Vagas):</strong></p>
+                  <p>{perfilData.resumo_profissional || 'Perfil não preenchido'}</p>
+                </div>
+
+                <Divider />
+
+                <div>
+                  <p><strong>Objetivos (Coaching):</strong></p>
                   <p>{perfilData.objetivos || 'Não informado'}</p>
                 </div>
-                
+
                 <Divider />
-                
+
                 <div>
                   <p><strong>Sobre Mim:</strong></p>
                   <p>{perfilData.biografia || 'Não informado'}</p>
