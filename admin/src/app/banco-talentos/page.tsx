@@ -30,13 +30,13 @@ import AdminLayout from '../../components/AdminLayout';
 const { Title, Text, Paragraph } = Typography;
 
 export default function BancoTalentosPage() {
-    const [candidatos, setCandidatos] = useState([]);
+    const [candidatos, setCandidatos] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     // Drawer de Detalhes do Candidato
     const [drawerVisible, setDrawerVisible] = useState(false);
-    const [selectedCandidate, setSelectedCandidate] = useState(null);
+    const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
 
     const [api, contextHolder] = notification.useNotification();
 

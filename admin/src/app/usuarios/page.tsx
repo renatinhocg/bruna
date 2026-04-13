@@ -236,7 +236,6 @@ export default function UsuariosPage() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAvatarChange = (info: { file: any }) => {
     const { file } = info;
     

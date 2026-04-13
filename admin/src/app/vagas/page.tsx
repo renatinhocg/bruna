@@ -33,17 +33,17 @@ const { TextArea } = Input;
 const { Text } = Typography;
 
 export default function VagasPage() {
-    const [vagas, setVagas] = useState([]);
-    const [empresas, setEmpresas] = useState([]);
+    const [vagas, setVagas] = useState<any[]>([]);
+    const [empresas, setEmpresas] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [editingVaga, setEditingVaga] = useState(null);
+    const [editingVaga, setEditingVaga] = useState<any>(null);
     const [form] = Form.useForm();
 
     // States para o Funil de Candidatos
     const [funnelVisible, setFunnelVisible] = useState(false);
-    const [selectedVaga, setSelectedVaga] = useState(null);
-    const [applications, setApplications] = useState([]);
+    const [selectedVaga, setSelectedVaga] = useState<any>(null);
+    const [applications, setApplications] = useState<any[]>([]);
     const [loadingF, setLoadingF] = useState(false);
 
     const [api, contextHolder] = notification.useNotification();
