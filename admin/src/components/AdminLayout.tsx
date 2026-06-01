@@ -25,6 +25,11 @@ import apiService from '../services/api';
 
 const { Header, Sider, Content } = Layout;
 
+const AdminContent = Content as unknown as React.ComponentType<{
+  children?: unknown;
+  style?: React.CSSProperties;
+}>;
+
 interface Usuario {
   id: number;
   nome: string;
@@ -436,7 +441,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </Header>
 
-        <Content
+        <AdminContent
           style={{
             margin: '24px',
             padding: 24,
@@ -446,7 +451,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           }}
         >
           {children}
-        </Content>
+        </AdminContent>
       </Layout>
     </Layout>
   );
