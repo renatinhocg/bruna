@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '../generated/prisma/index.js';
 import slugify from '../utils/slugify.js';
+import { matchesCompanyPortalSlug } from '../utils/companyPortalSlug.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -27,7 +28,7 @@ router.get('/portal/:slug', async (req, res) => {
       }
     });
 
-    const company = companies.find((item) => slugify(item.name) === slug);
+    const company = companies.find((item) => matchesCompanyPortalSlug(item.name, slug));
 
     if (!company) {
       return res.status(404).json({ error: 'Empresa nao encontrada para este portal' });

@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '../generated/prisma/index.js';
 import slugify from '../utils/slugify.js';
+import { matchesCompanyPortalSlug } from '../utils/companyPortalSlug.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -23,7 +24,7 @@ router.get('/public/company/:companySlug/:jobSlug', async (req, res) => {
         });
 
         const job = jobs.find((item) => {
-            const matchesCompany = slugify(item.company?.name) === companySlug;
+            const matchesCompany = matchesCompanyPortalSlug(item.company?.name, companySlug);
             const publicSlug = item.slug || `${slugify(item.title)}-${item.id}`;
             return matchesCompany && publicSlug === jobSlug;
         });
