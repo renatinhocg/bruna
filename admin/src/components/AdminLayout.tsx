@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Menu, Avatar, notification, Dropdown, Popover, List, Badge, Button } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Popover, Badge } from 'antd';
 import {
   DashboardOutlined,
   UserOutlined,
@@ -38,7 +38,7 @@ interface Usuario {
 }
 
 interface AdminLayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactElement | React.ReactElement[] | null;
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -46,30 +46,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const [notificationApi, contextHolder] = notification.useNotification();
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'Nova candidatura recebida',
-      description: 'João Silva se candidatou para Desenvolvedor Front-end.',
-      time: '5 min atrás',
-      read: false,
-    },
-    {
-      id: 2,
-      title: 'Novo contato recebido',
-      description: 'Maria Oliveira enviou uma mensagem de interesse.',
-      time: '1 hora atrás',
-      read: false,
-    },
-    {
-      id: 3,
-      title: 'Agendamento confirmado',
-      description: 'Sessão de Coaching com Carlos Souza às 15:00.',
-      time: 'Ontem',
-      read: true,
-    }
-  ]);
 
   const loadCurrentUser = useCallback(async () => {
     try {
@@ -85,7 +61,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [router]);
 
   useEffect(() => {
-    // Verificar se está logado
     const token = localStorage.getItem('adminToken');
     if (!token) {
       router.push('/login');
@@ -99,73 +74,22 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     router.push('/login');
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    notificationApi.success({
-      message: 'Notificações',
-      description: 'Todas as notificações foram marcadas como lidas.',
-      placement: 'topRight'
-    });
-  };
+  const unreadCount = 0;
 
   const notificationContent = (
     <div style={{ width: 320 }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid #f0f0f0',
-        paddingBottom: 8,
-        marginBottom: 8
-      }}>
-        <span style={{ fontWeight: 600 }}>Notificações ({unreadCount})</span>
-        {notifications.length > 0 && (
-          <Button type="link" size="small" onClick={markAllAsRead} style={{ padding: 0 }}>
-            Marcar como lidas
-          </Button>
-        )}
+      <div
+        style={{
+          borderBottom: '1px solid #f0f0f0',
+          paddingBottom: 8,
+          marginBottom: 8
+        }}
+      >
+        <span style={{ fontWeight: 600 }}>Notificações</span>
       </div>
-      {notifications.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '24px 0', color: '#8c8c8c' }}>
-          Nenhuma notificação nova
-        </div>
-      ) : (
-        <List
-          itemLayout="horizontal"
-          dataSource={notifications}
-          renderItem={(item) => (
-            <List.Item
-              onClick={() => {
-                setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n));
-              }}
-              style={{
-                cursor: 'pointer',
-                padding: '8px 12px',
-                borderRadius: 6,
-                background: item.read ? 'transparent' : '#f0fdf4',
-                transition: 'background 0.2s',
-                borderBottom: '1px solid #f5f5f5'
-              }}
-            >
-              <List.Item.Meta
-                title={
-                  <span style={{ fontSize: 13, fontWeight: item.read ? 500 : 600 }}>
-                    {item.title}
-                  </span>
-                }
-                description={
-                  <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ color: '#595959' }}>{item.description}</span>
-                    <span style={{ color: '#8c8c8c', fontSize: 10, marginTop: 4 }}>{item.time}</span>
-                  </div>
-                }
-              />
-            </List.Item>
-          )}
-        />
-      )}
+      <div style={{ textAlign: 'center', padding: '24px 0', color: '#8c8c8c' }}>
+        Nenhuma notificação disponível no momento.
+      </div>
     </div>
   );
 
@@ -183,7 +107,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       onClick: () => router.push('/configuracoes')
     },
     {
-      type: 'divider' as const,
+      type: 'divider' as const
     },
     {
       key: 'logout',
@@ -351,21 +275,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   ];
 
   return (
-    <>
-      {contextHolder}
-      <Layout style={{ minHeight: '100vh' }}>
-        <Sider
-          trigger={null}
-          collapsible
-          collapsed={collapsed}
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        style={{
+          background: '#09090b',
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.15)',
+          borderRight: '1px solid #1f222a',
+          zIndex: 10
+        }}
+      >
+        <div
           style={{
-            background: '#09090b',
-            boxShadow: '4px 0 24px rgba(0, 0, 0, 0.15)',
-            borderRight: '1px solid #1f222a',
-            zIndex: 10
-          }}
-        >
-          <div style={{
             height: 64,
             margin: '16px 16px 24px 16px',
             display: 'flex',
@@ -373,10 +296,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             gap: 12,
             padding: collapsed ? '0' : '0 12px',
             justifyContent: collapsed ? 'center' : 'flex-start',
-            transition: 'all 0.2s',
-          }}>
-            {/* Premium Icon Badge */}
-            <div style={{
+            transition: 'all 0.2s'
+          }}
+        >
+          <div
+            style={{
               width: 38,
               height: 38,
               borderRadius: '10px',
@@ -385,15 +309,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 4px 12px rgba(124, 58, 237, 0.35)',
-              flexShrink: 0,
-            }}>
-              <span style={{ fontSize: 18, color: 'white', fontWeight: 800, letterSpacing: -0.5 }}>AC</span>
-            </div>
-            
-            {/* Title Text */}
-            {!collapsed && (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{
+              flexShrink: 0
+            }}
+          >
+            <span style={{ fontSize: 18, color: 'white', fontWeight: 800, letterSpacing: -0.5 }}>AC</span>
+          </div>
+
+          {!collapsed && (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span
+                style={{
                   color: 'white',
                   fontWeight: 700,
                   fontSize: '14px',
@@ -402,109 +327,127 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   lineHeight: '1.2'
-                }}>
-                  Admin Coaching
-                </span>
-                <span style={{
+                }}
+              >
+                Admin Coaching
+              </span>
+              <span
+                style={{
                   color: '#64748b',
                   fontSize: '9px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '1px',
                   marginTop: '1px'
-                }}>
-                  Carreiras & R&S
-                </span>
-              </div>
-            )}
-          </div>
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[getSelectedKey()]}
-            items={menuItems}
-            style={{ border: 'none' }}
-          />
-        </Sider>
+                }}
+              >
+                Carreiras & R&S
+              </span>
+            </div>
+          )}
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[getSelectedKey()]}
+          items={menuItems}
+          style={{ border: 'none' }}
+        />
+      </Sider>
 
-        <Layout>
-          <Header style={{
+      <Layout>
+        <Header
+          style={{
             padding: '0 24px',
             background: '#fff',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{
+          }}
+        >
+          <div
+            style={{
               cursor: 'pointer',
               fontSize: '18px',
               fontWeight: 'bold'
-            }} onClick={() => setCollapsed(!collapsed)}>
-              ☰
-            </div>
+            }}
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            ☰
+          </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              {/* Central de Notificações */}
-              <Popover
-                content={notificationContent}
-                trigger="click"
-                placement="bottomRight"
-                overlayClassName="premium-notifications-popover"
-              >
-                <Badge count={unreadCount} style={{ boxShadow: '0 0 0 1px #fff' }}>
-                  <BellOutlined style={{
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <Popover
+              content={notificationContent}
+              trigger="click"
+              placement="bottomRight"
+              overlayClassName="premium-notifications-popover"
+            >
+              <Badge count={unreadCount} style={{ boxShadow: '0 0 0 1px #fff' }}>
+                <BellOutlined
+                  style={{
                     fontSize: 20,
                     cursor: 'pointer',
                     color: '#64748b',
                     transition: 'color 0.2s',
                     padding: 4
-                  }} onMouseEnter={e => e.currentTarget.style.color = '#7c3aed'}
-                     onMouseLeave={e => e.currentTarget.style.color = '#64748b'}
-                  />
-                </Badge>
-              </Popover>
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#7c3aed';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#64748b';
+                  }}
+                />
+              </Badge>
+            </Popover>
 
-              {/* Menu de Perfil de Usuário Dropdown */}
-              <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
-                <div style={{
+            <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
+              <div
+                style={{
                   display: 'flex',
                   alignItems: 'center',
                   cursor: 'pointer',
                   padding: '6px 10px',
                   borderRadius: 8,
-                  transition: 'background-color 0.2s',
+                  transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <Avatar
+                  src={currentUser?.avatar_url}
+                  icon={!currentUser?.avatar_url && <UserOutlined />}
+                  style={{ marginRight: 8, background: '#7c3aed' }}
                 >
-                  <Avatar
-                    src={currentUser?.avatar_url}
-                    icon={!currentUser?.avatar_url && <UserOutlined />}
-                    style={{ marginRight: 8, background: '#7c3aed' }}
-                  >
-                    {!currentUser?.avatar_url && currentUser?.nome?.charAt(0).toUpperCase()}
-                  </Avatar>
-                  <span style={{ fontWeight: 500, marginRight: 6, color: '#334155' }}>
-                    {currentUser?.nome || 'Carregando...'}
-                  </span>
-                  <DownOutlined style={{ fontSize: 10, color: '#64748b' }} />
-                </div>
-              </Dropdown>
-            </div>
-          </Header>
+                  {!currentUser?.avatar_url && currentUser?.nome?.charAt(0).toUpperCase()}
+                </Avatar>
+                <span style={{ fontWeight: 500, marginRight: 6, color: '#334155' }}>
+                  {currentUser?.nome || 'Carregando...'}
+                </span>
+                <DownOutlined style={{ fontSize: 10, color: '#64748b' }} />
+              </div>
+            </Dropdown>
+          </div>
+        </Header>
 
-          <Content style={{
+        <Content
+          style={{
             margin: '24px',
             padding: 24,
             background: '#fff',
             borderRadius: 8,
             minHeight: 'calc(100vh - 112px)'
-          }}>
-            {children}
-          </Content>
-        </Layout>
+          }}
+        >
+          {children}
+        </Content>
       </Layout>
-    </>
+    </Layout>
   );
 }
