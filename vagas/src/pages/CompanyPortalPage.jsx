@@ -67,6 +67,14 @@ export default function CompanyPortalPage({ forcedCompanySlug = null }) {
             <Paragraph className="vagas-hero-copy">
               {portal.description || 'Conheca a empresa, entenda o momento do time e encontre a vaga que faz sentido para sua proxima fase profissional.'}
             </Paragraph>
+            <Button
+              type="primary"
+              size="large"
+              className="vagas-hero-button"
+              onClick={() => document.getElementById('vagas-abertas')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              Ver vagas abertas <ArrowRightOutlined />
+            </Button>
           </div>
 
           <div className="vagas-company-card">
@@ -110,7 +118,7 @@ export default function CompanyPortalPage({ forcedCompanySlug = null }) {
             </div>
           </section>
 
-          <section className="vagas-section">
+          <section className="vagas-section" id="vagas-abertas">
             <div className="vagas-section-head">
               <div>
                 <Title level={3} style={{ marginBottom: 6 }}>Vagas abertas</Title>

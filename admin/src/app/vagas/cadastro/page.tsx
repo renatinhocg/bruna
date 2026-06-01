@@ -35,7 +35,32 @@ import AdminLayout from '../../../components/AdminLayout';
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
-const { RangePicker } = DatePicker;
+
+const currencyFormatter = (value?: string | number) => {
+    if (value === undefined || value === null || value === '') return '';
+    const numericValue = Number(String(value).replace(/[^\d.-]/g, ''));
+    if (Number.isNaN(numericValue)) return '';
+
+    return numericValue.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+};
+
+const currencyParser = (value?: string) => {
+    if (!value) return null;
+    const normalizedValue = value
+        .replace(/\s/g, '')
+        .replace(/R\$/g, '')
+        .replace(/\./g, '')
+        .replace(',', '.')
+        .replace(/[^\d.-]/g, '');
+
+    const parsedValue = Number(normalizedValue);
+    return Number.isNaN(parsedValue) ? null : parsedValue;
+};
 
 export default function VagasCadastroPage() {
     const navigate = useNavigate();
@@ -145,8 +170,8 @@ export default function VagasCadastroPage() {
                 description: values.description,
                 requirements: values.requirements,
                 benefits: values.benefits,
-                salary_min: values.salary_min,
-                salary_max: values.salary_max,
+                salary_min: currencyParser(String(values.salary_min ?? '')),
+                salary_max: currencyParser(String(values.salary_max ?? '')),
                 status: values.status,
                 start_date: values.start_date ? values.start_date.toISOString() : null,
                 end_date: values.end_date ? values.end_date.toISOString() : null,
@@ -314,21 +339,27 @@ export default function VagasCadastroPage() {
                                 <Row gutter={24}>
                                     <Col xs={24} sm={12}>
                                         <Form.Item label="Salário Mínimo (R$)" name="salary_min">
-                                            <InputNumber 
-                                                placeholder="Ex: 3500"
+                                            <InputNumber
+                                                placeholder="R$ 3.500,00"
                                                 style={{ width: '100%' }}
                                                 min={0}
-                                                formatter={(value) => `R$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                                precision={2}
+                                                decimalSeparator=","
+                                                formatter={currencyFormatter}
+                                                parser={currencyParser}
                                             />
                                         </Form.Item>
                                     </Col>
                                     <Col xs={24} sm={12}>
                                         <Form.Item label="Salário Máximo (R$)" name="salary_max">
-                                            <InputNumber 
-                                                placeholder="Ex: 7000"
+                                            <InputNumber
+                                                placeholder="R$ 7.000,00"
                                                 style={{ width: '100%' }}
                                                 min={0}
-                                                formatter={(value) => `R$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                                precision={2}
+                                                decimalSeparator=","
+                                                formatter={currencyFormatter}
+                                                parser={currencyParser}
                                             />
                                         </Form.Item>
                                     </Col>

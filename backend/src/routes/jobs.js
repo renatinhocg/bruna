@@ -6,6 +6,21 @@ import { matchesCompanyPortalSlug } from '../utils/companyPortalSlug.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+function parseCurrencyValue(value) {
+    if (value === undefined || value === null || value === '') return null;
+    if (typeof value === 'number') return Number.isNaN(value) ? null : value;
+
+    const normalizedValue = String(value)
+        .replace(/\s/g, '')
+        .replace(/R\$/g, '')
+        .replace(/\./g, '')
+        .replace(',', '.')
+        .replace(/[^\d.-]/g, '');
+    const parsedValue = Number(normalizedValue);
+
+    return Number.isNaN(parsedValue) ? null : parsedValue;
+}
+
 // Buscar vaga publica por empresa + slug amigavel
 router.get('/public/company/:companySlug/:jobSlug', async (req, res) => {
     const { companySlug, jobSlug } = req.params;
@@ -128,8 +143,8 @@ router.post('/', async (req, res) => {
                 description,
                 requirements,
                 benefits,
-                salary_min: salary_min ? parseFloat(salary_min) : null,
-                salary_max: salary_max ? parseFloat(salary_max) : null,
+                salary_min: parseCurrencyValue(salary_min),
+                salary_max: parseCurrencyValue(salary_max),
                 type: type || 'CLT',
                 location_id: location_id ? parseInt(location_id) : null,
                 modality: modality || 'REMOTE',
@@ -171,8 +186,8 @@ router.put('/:id', async (req, res) => {
                 description,
                 requirements,
                 benefits,
-                salary_min: salary_min ? parseFloat(salary_min) : undefined,
-                salary_max: salary_max ? parseFloat(salary_max) : undefined,
+                salary_min: parseCurrencyValue(salary_min),
+                salary_max: parseCurrencyValue(salary_max),
                 type,
                 location_id: location_id ? parseInt(location_id) : null,
                 modality,

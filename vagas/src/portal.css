@@ -12,6 +12,7 @@
     radial-gradient(circle at top right, rgba(20, 184, 166, 0.12), transparent 26%),
     linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
   color: var(--portal-ink);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .vagas-shell {
@@ -72,6 +73,23 @@
   color: rgba(255, 255, 255, 0.86);
 }
 
+.vagas-hero-button {
+  height: 46px;
+  padding: 0 22px;
+  margin-top: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1643a5;
+  font-weight: 700;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+.vagas-hero-button:hover {
+  background: #eef6ff !important;
+  color: #0f2f78 !important;
+}
+
 .vagas-company-card {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -107,16 +125,32 @@
 .vagas-stat {
   background: #fff;
   border: 1px solid var(--portal-line);
-  border-radius: 20px;
-  padding: 18px;
+  border-radius: 16px;
+  padding: 22px;
   min-height: 104px;
+  font-family: inherit;
 }
 
 .vagas-stat strong {
   display: block;
-  font-size: 28px;
+  font-family: inherit;
+  font-size: 30px;
+  font-weight: 800;
   line-height: 1;
   margin-bottom: 8px;
+  color: #0f172a;
+}
+
+.vagas-stat .ant-typography {
+  display: block;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.vagas-stat .ant-typography-secondary {
+  color: var(--portal-muted);
+  font-weight: 500;
 }
 
 .vagas-main {
