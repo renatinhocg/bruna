@@ -75,7 +75,7 @@ export default function BancoTalentosPage() {
         {
             title: 'Candidato',
             key: 'candidato',
-            render: (_, record) => (
+            render: (_: any, record: any) => (
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <Avatar src={record.avatar_url} style={{ marginRight: 12 }}>
                         {!record.avatar_url && record.nome?.charAt(0)}
@@ -90,7 +90,7 @@ export default function BancoTalentosPage() {
         {
             title: 'Profissão/Experiência',
             key: 'profissional',
-            render: (_, record) => (
+            render: (_: any, record: any) => (
                 <div>
                     <div>{record.profissao || <Text type="secondary">N/A</Text>}</div>
                     <Text type="secondary" style={{ fontSize: 12 }}>{record.experiencia || 'Não informada'}</Text>
@@ -101,12 +101,12 @@ export default function BancoTalentosPage() {
             title: 'Contato',
             dataIndex: 'telefone',
             key: 'telefone',
-            render: (tel) => tel || '-'
+            render: (tel: any) => tel || '-'
         },
         {
             title: 'Documentos',
             key: 'docs',
-            render: (_, record) => (
+            render: (_: any, record: any) => (
                 <Space>
                     {record.curriculo_url ? (
                         <Button
@@ -126,7 +126,7 @@ export default function BancoTalentosPage() {
         {
             title: 'Detalhes',
             key: 'acoes',
-            render: (_, record) => (
+            render: (_: any, record: any) => (
                 <Button
                     type="primary"
                     icon={<EyeOutlined />}

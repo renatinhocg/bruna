@@ -13,6 +13,11 @@ const statusOptions = [
   { value: "inativo", label: "Inativo" },
 ];
 
+const tipoOptions = [
+  { value: "cliente", label: "Cliente" },
+  { value: "interno", label: "Interno" },
+];
+
 export default function ProjetosPage() {
   const [projetos, setProjetos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -22,6 +27,7 @@ export default function ProjetosPage() {
     id: string;
     nome: string;
     descricao?: string;
+    tipo?: string;
     tags?: string[];
     status?: string;
     criado_em?: string;
@@ -51,6 +57,7 @@ export default function ProjetosPage() {
       form.setFieldsValue({
         nome: projeto.nome,
         descricao: projeto.descricao,
+        tipo: projeto.tipo || "cliente",
         tags: projeto.tags || [],
         status: projeto.status,
       });
@@ -77,6 +84,10 @@ export default function ProjetosPage() {
         await api.updateProjeto(editing.id, values);
         message.success("Projeto atualizado!");
       } else {
+        // Se for interno, garante que está ativo/aprovado
+        if (values.tipo === 'interno') {
+          values.status = 'ativo';
+        }
         await api.createProjeto(values);
         message.success("Projeto criado!");
       }
@@ -109,10 +120,20 @@ export default function ProjetosPage() {
   const router = useRouter();
   const columns = [
     { title: "Nome", dataIndex: "nome", key: "nome" },
+    { 
+      title: "Tipo", 
+      dataIndex: "tipo", 
+      key: "tipo",
+      render: (t: string) => (
+        <Tag color={t === "interno" ? "purple" : "blue"} style={{ borderRadius: 6 }}>
+          {t === "interno" ? "INTERNO" : "CLIENTE"}
+        </Tag>
+      )
+    },
     { title: "Descrição", dataIndex: "descricao", key: "descricao" },
-    { title: "Tags", dataIndex: "tags", key: "tags", render: (tags: string[]) => tags?.map((tag: string) => <Tag key={tag}>{tag}</Tag>) },
-    { title: "Status", dataIndex: "status", key: "status", render: (s: string) => <Tag color={s === "ativo" ? "green" : "red"}>{s}</Tag> },
-  { title: "Criado em", dataIndex: "criado_em", key: "criado_em", render: (d: string) => d && new Date(d).toLocaleDateString() },
+    { title: "Tags", dataIndex: "tags", key: "tags", render: (tags: string[]) => tags?.map((tag: string) => <Tag key={tag} style={{ borderRadius: 4 }}>{tag}</Tag>) },
+    { title: "Status", dataIndex: "status", key: "status", render: (s: string) => <Tag color={s === "ativo" ? "green" : "red"} style={{ borderRadius: 6 }}>{s?.toUpperCase()}</Tag> },
+    { title: "Criado em", dataIndex: "criado_em", key: "criado_em", render: (d: string) => d && new Date(d).toLocaleDateString() },
     {
       title: "Ações",
       key: "acoes",
@@ -154,17 +175,20 @@ export default function ProjetosPage() {
           onOk={handleOk}
           okText="Salvar"
         >
-          <Form form={form} layout="vertical">
+          <Form form={form} layout="vertical" initialValues={{ tipo: 'cliente', status: 'ativo' }}>
             <Form.Item name="nome" label="Nome" rules={[{ required: true, message: "Informe o nome" }]}> 
-              <Input />
+              <Input placeholder="Nome do projeto" />
+            </Form.Item>
+            <Form.Item name="tipo" label="Categoria" rules={[{ required: true }]}>
+              <Select options={tipoOptions} />
             </Form.Item>
             <Form.Item name="descricao" label="Descrição">
-              <Input.TextArea rows={2} />
+              <Input.TextArea rows={2} placeholder="Breve descrição" />
             </Form.Item>
             <Form.Item name="tags" label="Tags">
-              <Select mode="tags" style={{ width: "100%" }} placeholder="Adicione tags" options={[]} />
+              <Select mode="tags" style={{ width: "100%" }} placeholder="Adicione etiquetas" options={[]} />
             </Form.Item>
-            <Form.Item name="status" label="Status" initialValue="ativo">
+            <Form.Item name="status" label="Status">
               <Select options={statusOptions} />
             </Form.Item>
           </Form>

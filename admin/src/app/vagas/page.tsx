@@ -1,12 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Table,
     Button,
-    Modal,
-    Form,
-    Input,
     Select,
     Space,
     Popconfirm,
@@ -23,22 +21,20 @@ import {
     EditOutlined,
     DeleteOutlined,
     FilePdfOutlined,
-    UserOutlined
+    UserOutlined,
+    TeamOutlined
 } from '@ant-design/icons';
 import apiService from '../../services/api';
 import AdminLayout from '../../components/AdminLayout';
 
 const { Option } = Select;
-const { TextArea } = Input;
 const { Text } = Typography;
 
 export default function VagasPage() {
     const [vagas, setVagas] = useState<any[]>([]);
     const [empresas, setEmpresas] = useState<any[]>([]);
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [editingVaga, setEditingVaga] = useState<any>(null);
-    const [form] = Form.useForm();
 
     // States para o Funil de Candidatos
     const [funnelVisible, setFunnelVisible] = useState(false);
@@ -69,16 +65,20 @@ export default function VagasPage() {
         loadData();
     }, [loadData]);
 
-    const handleAdd = () => {
-        setEditingVaga(null);
-        form.resetFields();
-        setModalVisible(true);
+    const handleAdd = () => navigate('/vagas/cadastro');
+
+    const toSlug = (s: string) => {
+        return String(s || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/\p{Diacritic}/gu, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
     };
 
     const handleEdit = (vaga: any) => {
-        setEditingVaga(vaga);
-        form.setFieldsValue(vaga);
-        setModalVisible(true);
+        const slug = vaga.slug || toSlug(vaga.title || vaga.nome || vaga.id);
+        navigate(`/vagas/${encodeURIComponent(slug)}`);
     };
 
     const handleDelete = async (id: number | string) => {
@@ -92,28 +92,7 @@ export default function VagasPage() {
         }
     };
 
-    const handleSubmit = async (values: any) => {
-        setLoading(true);
-        try {
-            if (editingVaga) {
-                await apiService.updateJob(editingVaga.id, values);
-                api.success({ message: 'Vaga atualizada com sucesso!', placement: 'topRight' });
-            } else {
-                await apiService.createJob(values);
-                api.success({ message: 'Vaga criada com sucesso!', placement: 'topRight' });
-            }
-
-            setModalVisible(false);
-            form.resetFields();
-            setEditingVaga(null);
-            await loadData();
-        } catch (error) {
-            console.error('Erro ao salvar vaga:', error);
-            api.error({ message: 'Erro ao salvar vaga', placement: 'topRight' });
-        } finally {
-            setLoading(false);
-        }
-    };
+    // criação/edição agora em rota dedicada `/vagas/cadastro`
 
     const openFunnel = async (vaga: any) => {
         setSelectedVaga(vaga);
@@ -146,7 +125,7 @@ export default function VagasPage() {
             title: 'Vaga',
             dataIndex: 'title',
             key: 'title',
-            render: (text, record) => (
+            render: (text: any, record: any) => (
                 <div>
                     <div style={{ fontWeight: 500 }}>{text}</div>
                     <div style={{ color: '#666', fontSize: 12 }}>{record.company?.name}</div>
@@ -156,7 +135,7 @@ export default function VagasPage() {
         {
             title: 'Tipo/Modalidade',
             key: 'tipo',
-            render: (_, record) => (
+            render: (_: any, record: any) => (
                 <Space direction="vertical" size={2}>
                     <Tag color="purple">{record.type}</Tag>
                     <Tag color={record.modality === 'REMOTE' ? 'green' : record.modality === 'HYBRID' ? 'orange' : 'default'}>
@@ -168,7 +147,7 @@ export default function VagasPage() {
         {
             title: 'Candidatos',
             key: 'candidatos',
-            render: (_, record) => (
+            render: (_: any, record: any) => (
                 <Button
                     type="dashed"
                     icon={<TeamOutlined />}
@@ -183,7 +162,7 @@ export default function VagasPage() {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
-            render: (status) => (
+            render: (status: any) => (
                 <Tag color={status === 'OPEN' ? 'green' : 'red'}>
                     {status === 'OPEN' ? 'Aberta' : 'Fechada'}
                 </Tag>
@@ -192,7 +171,7 @@ export default function VagasPage() {
         {
             title: 'Ações',
             key: 'acoes',
-            render: (record) => (
+            render: (record: any) => (
                 <Space>
                     <Button
                         type="primary"
@@ -217,8 +196,7 @@ export default function VagasPage() {
         }
     ];
 
-    // Helper component for Funnel Icon since antd TeamOutlined was throwing error if not imported directly
-    const TeamOutlined = () => <span role="img" aria-label="team">👥</span>;
+
 
     return (
         <AdminLayout>
@@ -243,117 +221,7 @@ export default function VagasPage() {
                     pagination={{ pageSize: 10 }}
                 />
 
-                <Modal
-                    title={editingVaga ? 'Editar Vaga' : 'Nova Vaga'}
-                    open={modalVisible}
-                    onCancel={() => setModalVisible(false)}
-                    footer={null}
-                    width={800}
-                >
-                    <Form
-                        form={form}
-                        layout="vertical"
-                        onFinish={handleSubmit}
-                        size="large"
-                        initialValues={{ status: 'OPEN', type: 'CLT', modality: 'PRESENTIAL' }}
-                    >
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item
-                                    label="Título da Vaga"
-                                    name="title"
-                                    rules={[{ required: true, message: 'O título é obrigatório' }]}
-                                >
-                                    <Input placeholder="Ex: Desenvolvedor Front-end Pleno" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item
-                                    label="Empresa"
-                                    name="company_id"
-                                    rules={[{ required: true, message: 'Selecione a empresa' }]}
-                                >
-                                    <Select placeholder="Selecione a empresa cliente">
-                                        {empresas.map(e => <Option key={e.id} value={e.id}>{e.name}</Option>)}
-                                    </Select>
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Form.Item
-                            label="Descrição Completa"
-                            name="description"
-                            rules={[{ required: true }]}
-                        >
-                            <TextArea rows={6} placeholder="Descreva os desafios e o dia a dia da vaga" />
-                        </Form.Item>
-
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="Requisitos" name="requirements">
-                                    <TextArea rows={4} placeholder="Liste os requisitos (habilidades, experiências)" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Benefícios" name="benefits">
-                                    <TextArea rows={4} placeholder="Liste os benefícios oferecidos" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Form.Item label="Tipo de Contrato" name="type" rules={[{ required: true }]}>
-                                    <Select>
-                                        <Option value="CLT">CLT</Option>
-                                        <Option value="PJ">PJ</Option>
-                                        <Option value="FREELANCER">Freelancer</Option>
-                                        <Option value="ESTAGIO">Estágio</Option>
-                                    </Select>
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item label="Modalidade" name="modality" rules={[{ required: true }]}>
-                                    <Select>
-                                        <Option value="REMOTE">Remoto</Option>
-                                        <Option value="HYBRID">Híbrido</Option>
-                                        <Option value="PRESENTIAL">Presencial</Option>
-                                    </Select>
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item label="Localização" name="location">
-                                    <Input placeholder="Ex: São Paulo, SP" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="Salário Mensal (R$)" name="salary">
-                                    <Input type="number" placeholder="Ex: 5000" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Status" name="status" rules={[{ required: true }]}>
-                                    <Select>
-                                        <Option value="OPEN">Aberta</Option>
-                                        <Option value="CLOSED">Fechada</Option>
-                                    </Select>
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                            <Space>
-                                <Button onClick={() => setModalVisible(false)}>Cancelar</Button>
-                                <Button type="primary" htmlType="submit" loading={loading}>
-                                    {editingVaga ? 'Atualizar' : 'Criar Vaga'}
-                                </Button>
-                            </Space>
-                        </Form.Item>
-                    </Form>
-                </Modal>
+                {/* Cadastro/edição agora em /vagas/cadastro */}
 
                 {/* DRIVER DO FUNIL DE CANDIDATOS */}
                 <Drawer

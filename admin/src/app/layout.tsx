@@ -15,6 +15,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Suprimir o modal de aviso de compatibilidade do AntD no React 19 no modo de desenvolvimento do Next.js
+if (typeof window !== 'undefined') {
+  const originalError = console.error;
+  console.error = (...args) => {
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('antd v5 support React')) {
+      return;
+    }
+    originalError(...args);
+  };
+
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('antd v5 support React')) {
+      return;
+    }
+    originalWarn(...args);
+  };
+}
+
 export const metadata: Metadata = {
   title: "Sistema Admin - Coach de Carreiras",
   description: "Painel administrativo para gestão de clientes e sessões de coaching",

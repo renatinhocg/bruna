@@ -1,8 +1,7 @@
 import express from 'express';
 import { google } from 'googleapis';
 import { PrismaClient } from '../generated/prisma/client.js';
-import dotenv from 'dotenv';
-dotenv.config({ path: process.env.NODE_ENV === 'production' ? '.env.production.google' : '.env.google' });
+import '../config/env.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();

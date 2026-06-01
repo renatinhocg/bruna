@@ -1,3 +1,4 @@
+import './config/env.js';
 import express from 'express';
 import cors from 'cors';
 import projetosRoutes from './routes/projetos.js';
@@ -16,6 +17,7 @@ const corsOptions = {
       'http://localhost:5174',
       'https://impulsobm.com.br',
       'https://www.impulsobm.com.br',
+      /\.bmtalentos\.com\.br$/,  // Portal de talentos por subdominio
       /\.vercel\.app$/,  // Qualquer subdomínio do Vercel
       /\.up\.railway\.app$/,  // Qualquer subdomínio do Railway
       /\.hostinger\.com\.br$/,  // Hostinger Brasil
@@ -130,12 +132,14 @@ import comprasRoutes from './routes/compras.js';
 import companiesRoutes from './routes/companies.js';
 import jobsRoutes from './routes/jobs.js';
 import jobApplicationsRoutes from './routes/job-applications.js';
+import locationsRoutes from './routes/locations.js';
 
 app.use('/api/produtos', produtosRoutes);
 app.use('/api/compras', comprasRoutes);
 app.use('/api/companies', companiesRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/job-applications', jobApplicationsRoutes);
+app.use('/api/locations', locationsRoutes);
 
 const PORT = process.env.PORT || 8002;
 app.listen(PORT, () => {

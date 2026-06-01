@@ -4,12 +4,14 @@
   "workspaces": [
     "frontend",
     "backend",
-    "admin"
+    "admin",
+    "vagas"
   ],
   "scripts": {
     "build": "echo 'Monorepo Root Build'",
     "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend",
     "build:frontend": "npm run build --prefix frontend",
-    "build:backend": "npm run build --prefix backend"
+    "build:backend": "npm run build --prefix backend",
+    "build:vagas": "npm run build --prefix vagas"
   }
 }

@@ -714,32 +714,60 @@ model Company {
   created_at      DateTime         @default(now())
   updated_at      DateTime         @updatedAt
   jobs            Job[]
+  locations       Location[]
 
   @@map("companies")
   @@index([status])
 }
 
-model Job {
+model Location {
   id              Int              @id @default(autoincrement())
-  title           String
-  description     String           @db.Text
-  requirements    String?          @db.Text
-  benefits        String?          @db.Text
-  salary          Decimal?         @db.Decimal(10, 2)
-  type            String           @default("CLT") // CLT, PJ, FREELANCER, ESTAGIO
-  location        String?
-  modality        String           @default("REMOTE") // REMOTE, HYBRID, ONSITE
   company_id      Int
-  status          String           @default("OPEN") // OPEN, CLOSED, DRAFT
+  name            String           // Ex: "Filial São Paulo", "Escritório Rio"
+  address         String?
+  city            String?
+  state           String?          // UF
+  postal_code     String?
   created_at      DateTime         @default(now())
   updated_at      DateTime         @updatedAt
   
   company         Company          @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  jobs            Job[]            @relation("LocationJobs")
+
+  @@map("locations")
+  @@index([company_id])
+}
+
+model Job {
+  id              Int              @id @default(autoincrement())
+  title           String
+  slug            String?          @unique // Para URLs amigáveis
+  description     String           @db.Text
+  requirements    String?          @db.Text
+  benefits        String?          @db.Text
+  salary_min      Decimal?         @db.Decimal(10, 2)
+  salary_max      Decimal?         @db.Decimal(10, 2)
+  type            String           @default("CLT") // CLT, PJ, FREELANCER, ESTAGIO
+  modality        String           @default("REMOTE") // REMOTE, HYBRID, ONSITE
+  location_id     Int?
+  company_id      Int
+  status          String           @default("OPEN") // OPEN, CLOSED, DRAFT
+  start_date      DateTime?
+  end_date        DateTime?
+  selection_stages String[]         @default([]) // JSON array de etapas: ["Entrevista", "Teste Técnico", etc]
+  accessibility_note String?        @db.Text // Informações sobre acessibilidade
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+  
+  company         Company          @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  location        Location?        @relation("LocationJobs", fields: [location_id], references: [id], onDelete: SetNull)
   applications    JobApplication[]
 
   @@map("jobs")
   @@index([status])
   @@index([company_id])
+  @@index([location_id])
+  @@index([slug])
 }
 
 model JobApplication {

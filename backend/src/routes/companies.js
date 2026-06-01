@@ -1,8 +1,51 @@
 import express from 'express';
 import { PrismaClient } from '../generated/prisma/index.js';
+import slugify from '../utils/slugify.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Portal publico por slug da empresa
+router.get('/portal/:slug', async (req, res) => {
+  const { slug } = req.params;
+
+  try {
+    const companies = await prisma.company.findMany({
+      where: { status: 'ACTIVE' },
+      include: {
+        jobs: {
+          where: { status: 'OPEN' },
+          include: {
+            location: true,
+            _count: {
+              select: { applications: true }
+            }
+          },
+          orderBy: { created_at: 'desc' }
+        },
+        locations: true
+      }
+    });
+
+    const company = companies.find((item) => slugify(item.name) === slug);
+
+    if (!company) {
+      return res.status(404).json({ error: 'Empresa nao encontrada para este portal' });
+    }
+
+    res.json({
+      ...company,
+      portal_slug: slugify(company.name),
+      jobs: company.jobs.map((job) => ({
+        ...job,
+        public_slug: job.slug || `${slugify(job.title)}-${job.id}`
+      }))
+    });
+  } catch (error) {
+    console.error('Erro ao carregar portal da empresa:', error);
+    res.status(500).json({ error: 'Erro ao carregar portal da empresa' });
+  }
+});
 
 // Listar todas as empresas
 router.get('/', async (req, res) => {
@@ -29,7 +72,7 @@ router.get('/:id', async (req, res) => {
     });
 
     if (!company) {
-      return res.status(404).json({ error: 'Empresa não encontrada' });
+      return res.status(404).json({ error: 'Empresa nao encontrada' });
     }
 
     res.json(company);
@@ -92,7 +135,7 @@ router.delete('/:id', async (req, res) => {
     await prisma.company.delete({
       where: { id: parseInt(id) },
     });
-    res.json({ message: 'Empresa excluída com sucesso' });
+    res.json({ message: 'Empresa excluida com sucesso' });
   } catch (error) {
     console.error('Erro ao excluir empresa:', error);
     res.status(500).json({ error: 'Erro ao excluir empresa', details: error.message });

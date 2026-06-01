@@ -6,11 +6,41 @@ import fs from 'fs';
 import path from 'path';
 import { PrismaClient } from '../generated/prisma/client.js';
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-dotenv.config();
+import '../config/env.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Função auxiliar resiliente para upload (S3 com fallback local inteligente em desenvolvimento)
+async function uploadFile({ file, s3Key, localSubdir, req }) {
+  if (process.env.AWS_S3_BUCKET) {
+    try {
+      const params = {
+        Bucket: process.env.AWS_S3_BUCKET,
+        Key: s3Key,
+        Body: file.buffer,
+        ContentType: file.mimetype
+      };
+      const data = await s3.upload(params).promise();
+      return data.Location;
+    } catch (error) {
+      console.warn(`[UPLOAD FALLBACK] Erro no upload do S3 para a chave ${s3Key}. Usando fallback local. Erro:`, error.message);
+    }
+  } else {
+    console.warn(`[UPLOAD FALLBACK] AWS_S3_BUCKET não configurado. Usando fallback local para a chave ${s3Key}.`);
+  }
+
+  // Fallback local: Salva na pasta uploads/<localSubdir>
+  const localDir = path.join(process.cwd(), 'uploads', localSubdir);
+  fs.mkdirSync(localDir, { recursive: true });
+  
+  const fileName = path.basename(s3Key);
+  const filePath = path.join(localDir, fileName);
+  fs.writeFileSync(filePath, file.buffer);
+
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  return `${baseUrl}/uploads/${localSubdir}/${fileName}`;
+}
 
 // Upload geral (aceita qualquer tipo de arquivo)
 // Permite controlar o tamanho máximo via variável de ambiente `MAX_UPLOAD_SIZE` (bytes).
@@ -119,15 +149,15 @@ router.post('/upload', authenticateToken, uploadGeral.single('file'), async (req
       return res.status(400).json({ erro: 'Arquivo não enviado' });
     }
 
-    const params = {
-      Bucket: process.env.AWS_S3_BUCKET,
-      Key: `uploads/${Date.now()}_${file.originalname}`,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-    };
+    const s3Key = `uploads/${Date.now()}_${file.originalname}`;
+    const url = await uploadFile({
+      file,
+      s3Key,
+      localSubdir: 'genericos',
+      req
+    });
 
-    const data = await s3.upload(params).promise();
-    res.json({ url: data.Location });
+    res.json({ url });
   } catch (err) {
     console.error('Erro no upload:', err);
     res.status(500).json({ erro: 'Erro ao enviar arquivo', detalhes: err.message });
@@ -138,15 +168,16 @@ router.post('/upload', authenticateToken, uploadGeral.single('file'), async (req
 router.post('/upload-legacy', uploadGeral.single('arquivo'), async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ erro: 'Arquivo não enviado' });
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET,
-    Key: `${Date.now()}_${file.originalname}`,
-    Body: file.buffer,
-    ContentType: file.mimetype,
-  };
+
   try {
-    const data = await s3.upload(params).promise();
-    res.json({ url: data.Location });
+    const s3Key = `${Date.now()}_${file.originalname}`;
+    const url = await uploadFile({
+      file,
+      s3Key,
+      localSubdir: 'legacy',
+      req
+    });
+    res.json({ url });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao enviar arquivo' });
   }
@@ -192,20 +223,18 @@ router.post('/avatar/:userId', authenticateToken, upload.single('avatar'), async
       return res.status(404).json({ erro: 'Usuário não encontrado' });
     }
 
-    // Upload para S3
-    const params = {
-      Bucket: process.env.AWS_S3_BUCKET,
-      Key: `avatars/${userId}_${Date.now()}_${file.originalname}`,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-    };
-
-    const data = await s3.upload(params).promise();
+    const s3Key = `avatars/${userId}_${Date.now()}_${file.originalname}`;
+    const url = await uploadFile({
+      file,
+      s3Key,
+      localSubdir: 'avatars',
+      req
+    });
 
     // Atualizar URL do avatar no banco
     const usuarioAtualizado = await prisma.usuario.update({
       where: { id: parseInt(userId) },
-      data: { avatar_url: data.Location },
+      data: { avatar_url: url },
       select: {
         id: true,
         nome: true,
@@ -222,7 +251,7 @@ router.post('/avatar/:userId', authenticateToken, upload.single('avatar'), async
     res.json({
       message: 'Avatar atualizado com sucesso',
       usuario: usuarioAtualizado,
-      avatar_url: data.Location
+      avatar_url: url
     });
 
   } catch (error) {
@@ -240,20 +269,18 @@ router.post('/link-image', upload.single('image'), async (req, res) => {
       return res.status(400).json({ erro: 'Arquivo de imagem não enviado' });
     }
 
-    // Upload para S3 (sem ACL, bucket deve ter política pública configurada)
-    const params = {
-      Bucket: process.env.AWS_S3_BUCKET,
-      Key: `links/${Date.now()}_${file.originalname}`,
-      Body: file.buffer,
-      ContentType: file.mimetype
-    };
-
-    const data = await s3.upload(params).promise();
+    const s3Key = `links/${Date.now()}_${file.originalname}`;
+    const url = await uploadFile({
+      file,
+      s3Key,
+      localSubdir: 'links',
+      req
+    });
 
     res.json({
       success: true,
       message: 'Imagem enviada com sucesso',
-      url: data.Location
+      url
     });
 
   } catch (error) {
@@ -275,15 +302,15 @@ router.post('/resume', uploadGeral.single('resume'), async (req, res) => {
       return res.status(400).json({ erro: 'Apenas arquivos PDF são aceitos' });
     }
 
-    const params = {
-      Bucket: process.env.AWS_S3_BUCKET,
-      Key: `resumes/${Date.now()}_${file.originalname}`,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-    };
+    const s3Key = `resumes/${Date.now()}_${file.originalname}`;
+    const url = await uploadFile({
+      file,
+      s3Key,
+      localSubdir: 'resumes',
+      req
+    });
 
-    const data = await s3.upload(params).promise();
-    res.json({ url: data.Location });
+    res.json({ url });
   } catch (err) {
     console.error('Erro no upload de currículo:', err);
     res.status(500).json({ erro: 'Erro ao enviar currículo', detalhes: err.message });

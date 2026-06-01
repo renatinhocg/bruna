@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Menu, Avatar, notification } from 'antd';
+import { Layout, Menu, Avatar, notification, Dropdown, Popover, List, Badge, Button } from 'antd';
 import {
   DashboardOutlined,
   UserOutlined,
@@ -17,7 +17,8 @@ import {
   DollarOutlined,
   BankOutlined,
   TeamOutlined,
-  SearchOutlined
+  DownOutlined,
+  BellOutlined
 } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
 import apiService from '../services/api';
@@ -45,7 +46,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const [, contextHolder] = notification.useNotification();
+  const [notificationApi, contextHolder] = notification.useNotification();
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      title: 'Nova candidatura recebida',
+      description: 'João Silva se candidatou para Desenvolvedor Front-end.',
+      time: '5 min atrás',
+      read: false,
+    },
+    {
+      id: 2,
+      title: 'Novo contato recebido',
+      description: 'Maria Oliveira enviou uma mensagem de interesse.',
+      time: '1 hora atrás',
+      read: false,
+    },
+    {
+      id: 3,
+      title: 'Agendamento confirmado',
+      description: 'Sessão de Coaching com Carlos Souza às 15:00.',
+      time: 'Ontem',
+      read: true,
+    }
+  ]);
 
   const loadCurrentUser = useCallback(async () => {
     try {
@@ -75,6 +99,101 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     router.push('/login');
   };
 
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    notificationApi.success({
+      message: 'Notificações',
+      description: 'Todas as notificações foram marcadas como lidas.',
+      placement: 'topRight'
+    });
+  };
+
+  const notificationContent = (
+    <div style={{ width: 320 }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderBottom: '1px solid #f0f0f0',
+        paddingBottom: 8,
+        marginBottom: 8
+      }}>
+        <span style={{ fontWeight: 600 }}>Notificações ({unreadCount})</span>
+        {notifications.length > 0 && (
+          <Button type="link" size="small" onClick={markAllAsRead} style={{ padding: 0 }}>
+            Marcar como lidas
+          </Button>
+        )}
+      </div>
+      {notifications.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '24px 0', color: '#8c8c8c' }}>
+          Nenhuma notificação nova
+        </div>
+      ) : (
+        <List
+          itemLayout="horizontal"
+          dataSource={notifications}
+          renderItem={(item) => (
+            <List.Item
+              onClick={() => {
+                setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n));
+              }}
+              style={{
+                cursor: 'pointer',
+                padding: '8px 12px',
+                borderRadius: 6,
+                background: item.read ? 'transparent' : '#f0fdf4',
+                transition: 'background 0.2s',
+                borderBottom: '1px solid #f5f5f5'
+              }}
+            >
+              <List.Item.Meta
+                title={
+                  <span style={{ fontSize: 13, fontWeight: item.read ? 500 : 600 }}>
+                    {item.title}
+                  </span>
+                }
+                description={
+                  <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ color: '#595959' }}>{item.description}</span>
+                    <span style={{ color: '#8c8c8c', fontSize: 10, marginTop: 4 }}>{item.time}</span>
+                  </div>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      )}
+    </div>
+  );
+
+  const userMenuItems = [
+    {
+      key: 'perfil',
+      label: 'Meu Perfil',
+      icon: <UserOutlined />,
+      onClick: () => router.push('/meu-perfil')
+    },
+    {
+      key: 'configuracoes',
+      label: 'Configurações',
+      icon: <SettingOutlined />,
+      onClick: () => router.push('/configuracoes')
+    },
+    {
+      type: 'divider' as const,
+    },
+    {
+      key: 'logout',
+      label: 'Sair',
+      icon: <LogoutOutlined />,
+      danger: true,
+      onClick: handleLogout
+    }
+  ];
+
   const getSelectedKey = () => {
     if (pathname === '/dashboard') return 'dashboard';
     if (pathname === '/usuarios') return 'usuarios';
@@ -98,113 +217,136 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const menuItems = [
     {
-      key: 'dashboard',
-      icon: <DashboardOutlined />,
-      label: 'Dashboard',
-      onClick: () => router.push('/dashboard')
+      type: 'group' as const,
+      label: collapsed ? null : 'Principal',
+      children: [
+        {
+          key: 'dashboard',
+          icon: <DashboardOutlined />,
+          label: 'Dashboard',
+          onClick: () => router.push('/dashboard')
+        },
+        {
+          key: 'usuarios',
+          icon: <UserOutlined />,
+          label: 'Usuários',
+          onClick: () => router.push('/usuarios')
+        },
+        {
+          key: 'contatos',
+          icon: <MessageOutlined />,
+          label: 'Contatos',
+          onClick: () => router.push('/contatos')
+        },
+        {
+          key: 'agendamentos',
+          icon: <CalendarOutlined />,
+          label: 'Agendamentos',
+          onClick: () => router.push('/agendamentos')
+        },
+        {
+          key: 'links',
+          icon: <LinkOutlined />,
+          label: 'Links (Linktree)',
+          onClick: () => router.push('/links')
+        }
+      ]
     },
     {
-      key: 'usuarios',
-      icon: <UserOutlined />,
-      label: 'Usuários',
-      onClick: () => router.push('/usuarios')
+      type: 'group' as const,
+      label: collapsed ? null : 'Recrutamento & Seleção (R&S)',
+      children: [
+        {
+          key: 'empresas',
+          icon: <BankOutlined />,
+          label: 'Empresas',
+          onClick: () => router.push('/empresas')
+        },
+        {
+          key: 'vagas',
+          icon: <ProjectOutlined />,
+          label: 'Vagas',
+          onClick: () => router.push('/vagas')
+        },
+        {
+          key: 'banco-talentos',
+          icon: <TeamOutlined />,
+          label: 'Banco de Talentos',
+          onClick: () => router.push('/banco-talentos')
+        }
+      ]
     },
     {
-      key: 'contatos',
-      icon: <MessageOutlined />,
-      label: 'Contatos',
-      onClick: () => router.push('/contatos')
+      type: 'group' as const,
+      label: collapsed ? null : 'Avaliações & Testes',
+      children: [
+        {
+          key: 'multiplas-inteligencias',
+          icon: <BulbOutlined />,
+          label: 'Múltiplas Inteligências',
+          onClick: () => router.push('/multiplas-inteligencias')
+        },
+        {
+          key: 'dominancia-cerebral',
+          icon: <BarChartOutlined />,
+          label: 'Dominância Cerebral',
+          onClick: () => router.push('/dominancia-cerebral/resultados')
+        },
+        {
+          key: 'disc',
+          icon: <BarChartOutlined />,
+          label: 'Teste DISC',
+          onClick: () => router.push('/disc')
+        }
+      ]
     },
     {
-      key: 'multiplas-inteligencias',
-      icon: <BulbOutlined />,
-      label: 'Múltiplas Inteligências',
-      onClick: () => router.push('/multiplas-inteligencias')
+      type: 'group' as const,
+      label: collapsed ? null : 'Gestão & Operações',
+      children: [
+        {
+          key: 'projetos',
+          icon: <ProjectOutlined />,
+          label: 'Gestão de Projetos',
+          onClick: () => router.push('/projetos')
+        },
+        {
+          key: 'planner',
+          icon: <CalendarOutlined />,
+          label: 'Planner',
+          onClick: () => router.push('/planner')
+        }
+      ]
     },
     {
-      key: 'dominancia-cerebral',
-      icon: <BarChartOutlined />,
-      label: 'Dominância Cerebral',
-      onClick: () => router.push('/dominancia-cerebral/resultados')
+      type: 'group' as const,
+      label: collapsed ? null : 'Comercial & Financeiro',
+      children: [
+        {
+          key: 'produtos',
+          icon: <ShoppingOutlined />,
+          label: 'Produtos',
+          onClick: () => router.push('/produtos')
+        },
+        {
+          key: 'vendas',
+          icon: <DollarOutlined />,
+          label: 'Vendas',
+          onClick: () => router.push('/vendas')
+        }
+      ]
     },
     {
-      key: 'disc',
-      icon: <BarChartOutlined />,
-      label: 'Teste DISC',
-      onClick: () => router.push('/disc')
-    },
-    {
-      key: 'agendamentos',
-      icon: <CalendarOutlined />,
-      label: 'Agendamentos',
-      onClick: () => router.push('/agendamentos')
-    },
-    {
-      key: 'projetos',
-      icon: <ProjectOutlined />,
-      label: 'Gestão de Projetos',
-      onClick: () => router.push('/projetos')
-    },
-    {
-      key: 'planner',
-      icon: <CalendarOutlined />,
-      label: 'Planner',
-      onClick: () => router.push('/planner')
-    },
-    {
-      key: 'links',
-      icon: <LinkOutlined />,
-      label: 'Links (Linktree)',
-      onClick: () => router.push('/links')
-    },
-    {
-      key: 'produtos',
-      icon: <ShoppingOutlined />,
-      label: 'Produtos',
-      onClick: () => router.push('/produtos')
-    },
-    {
-      key: 'vendas',
-      icon: <DollarOutlined />,
-      label: 'Vendas',
-      onClick: () => router.push('/vendas')
-    },
-    {
-      key: 'empresas',
-      icon: <BankOutlined />,
-      label: 'Empresas',
-      onClick: () => router.push('/empresas')
-    },
-    {
-      key: 'vagas',
-      icon: <ProjectOutlined />,
-      label: 'Vagas',
-      onClick: () => router.push('/vagas')
-    },
-    {
-      key: 'banco-talentos',
-      icon: <TeamOutlined />,
-      label: 'Banco de Talentos',
-      onClick: () => router.push('/banco-talentos')
-    },
-    {
-      key: 'relatorios',
-      icon: <BarChartOutlined />,
-      label: 'Relatórios',
-      onClick: () => router.push('/relatorios')
-    },
-    {
-      key: 'configuracoes',
-      icon: <SettingOutlined />,
-      label: 'Configurações',
-      onClick: () => router.push('/configuracoes')
-    },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Sair',
-      onClick: handleLogout,
-      style: { marginTop: 'auto' }
+      type: 'group' as const,
+      label: collapsed ? null : 'Sistema',
+      children: [
+        {
+          key: 'relatorios',
+          icon: <BarChartOutlined />,
+          label: 'Relatórios',
+          onClick: () => router.push('/relatorios')
+        }
+      ]
     }
   ];
 
@@ -217,22 +359,64 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           collapsible
           collapsed={collapsed}
           style={{
-            background: '#001529'
+            background: '#09090b',
+            boxShadow: '4px 0 24px rgba(0, 0, 0, 0.15)',
+            borderRight: '1px solid #1f222a',
+            zIndex: 10
           }}
         >
           <div style={{
             height: 64,
-            margin: 16,
-            background: 'rgba(255, 255, 255, 0.2)',
-            borderRadius: 6,
+            margin: '16px 16px 24px 16px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 'bold',
-            fontSize: collapsed ? '14px' : '16px'
+            gap: 12,
+            padding: collapsed ? '0' : '0 12px',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            transition: 'all 0.2s',
           }}>
-            {collapsed ? 'AC' : 'Admin Coaching'}
+            {/* Premium Icon Badge */}
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #c026d3 0%, #7c3aed 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(124, 58, 237, 0.35)',
+              flexShrink: 0,
+            }}>
+              <span style={{ fontSize: 18, color: 'white', fontWeight: 800, letterSpacing: -0.5 }}>AC</span>
+            </div>
+            
+            {/* Title Text */}
+            {!collapsed && (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  letterSpacing: '0.3px',
+                  background: 'linear-gradient(to right, #ffffff, #cbd5e1)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  lineHeight: '1.2'
+                }}>
+                  Admin Coaching
+                </span>
+                <span style={{
+                  color: '#64748b',
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  marginTop: '1px'
+                }}>
+                  Carreiras & R&S
+                </span>
+              </div>
+            )}
           </div>
           <Menu
             theme="dark"
@@ -260,15 +444,53 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               ☰
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <Avatar
-                src={currentUser?.avatar_url}
-                icon={!currentUser?.avatar_url && <UserOutlined />}
-                style={{ marginRight: 8 }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+              {/* Central de Notificações */}
+              <Popover
+                content={notificationContent}
+                trigger="click"
+                placement="bottomRight"
+                overlayClassName="premium-notifications-popover"
               >
-                {!currentUser?.avatar_url && currentUser?.nome?.charAt(0).toUpperCase()}
-              </Avatar>
-              <span>{currentUser?.nome || 'Carregando...'}</span>
+                <Badge count={unreadCount} style={{ boxShadow: '0 0 0 1px #fff' }}>
+                  <BellOutlined style={{
+                    fontSize: 20,
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    transition: 'color 0.2s',
+                    padding: 4
+                  }} onMouseEnter={e => e.currentTarget.style.color = '#7c3aed'}
+                     onMouseLeave={e => e.currentTarget.style.color = '#64748b'}
+                  />
+                </Badge>
+              </Popover>
+
+              {/* Menu de Perfil de Usuário Dropdown */}
+              <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  padding: '6px 10px',
+                  borderRadius: 8,
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <Avatar
+                    src={currentUser?.avatar_url}
+                    icon={!currentUser?.avatar_url && <UserOutlined />}
+                    style={{ marginRight: 8, background: '#7c3aed' }}
+                  >
+                    {!currentUser?.avatar_url && currentUser?.nome?.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <span style={{ fontWeight: 500, marginRight: 6, color: '#334155' }}>
+                    {currentUser?.nome || 'Carregando...'}
+                  </span>
+                  <DownOutlined style={{ fontSize: 10, color: '#64748b' }} />
+                </div>
+              </Dropdown>
             </div>
           </Header>
 

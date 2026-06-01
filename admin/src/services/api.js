@@ -676,6 +676,56 @@ class ApiService {
     });
   }
 
+  // Locais/Unidades
+  async getLocations() {
+    return this.request('/locations');
+  }
+
+  async getLocationsByCompany(companyId) {
+    return this.request(`/locations/company/${companyId}`);
+  }
+
+  async getLocationById(id) {
+    return this.request(`/locations/${id}`);
+  }
+
+  async createLocation(data) {
+    return this.request('/locations', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async updateLocation(id, data) {
+    return this.request(`/locations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async deleteLocation(id) {
+    return this.request(`/locations/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // ViaCEP integration
+  async fetchAddressByCEP(cep) {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) {
+      throw new Error('CEP deve conter 8 dígitos');
+    }
+    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+    if (!response.ok) {
+      throw new Error('Erro ao buscar CEP');
+    }
+    const data = await response.json();
+    if (data.erro) {
+      throw new Error('CEP não encontrado');
+    }
+    return data;
+  }
+
   // Vagas
   async getJobs() {
     return this.request('/jobs');

@@ -1,6 +1,5 @@
 import AWS from 'aws-sdk';
-import dotenv from 'dotenv';
-dotenv.config();
+import './env.js';
 
 const s3Config = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,

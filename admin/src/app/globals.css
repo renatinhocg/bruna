@@ -24,3 +24,72 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ==========================================================================
+   Ant Design Premium SaaS Sidebar Overrides
+   ========================================================================== */
+
+/* Premium matte dark background for Sider */
+.ant-layout-sider {
+  background: #09090b !important;
+  border-right: 1px solid #1f222a;
+}
+
+.ant-layout-sider .ant-menu-dark {
+  background: transparent !important;
+}
+
+/* Custom premium styling for Sidebar Group Sessions */
+.ant-menu-dark .ant-menu-item-group-title {
+  font-size: 10px !important;
+  font-weight: 700 !important; /* Bold */
+  text-transform: uppercase !important; /* Capitalized/Uppercase */
+  letter-spacing: 1.5px !important; /* Elegant spacing */
+  color: #64748b !important; /* Modern slate-500 */
+  padding-top: 24px !important;
+  padding-bottom: 8px !important;
+  padding-left: 20px !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Hide titles beautifully when menu is collapsed */
+.ant-layout-sider-collapsed .ant-menu-item-group-title {
+  padding: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Modern styling for Menu Items */
+.ant-menu-dark .ant-menu-item {
+  height: 40px !important;
+  line-height: 40px !important;
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+  border-radius: 8px !important;
+  width: calc(100% - 16px) !important;
+  margin-left: 8px !important;
+  color: #94a3b8 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Hover effect */
+.ant-menu-dark .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #f8fafc !important;
+}
+
+/* Active / Selected item in sidebar */
+.ant-menu-dark .ant-menu-item-selected {
+  background: linear-gradient(135deg, rgba(192, 38, 211, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%) !important;
+  color: #e879f9 !important; /* premium purple accent color */
+  font-weight: 600 !important;
+  border-left: 3px solid #c026d3 !important;
+  box-shadow: inset 0 0 12px rgba(192, 38, 211, 0.05);
+}
+
+/* Header style premium tweak */
+.ant-layout-header {
+  border-bottom: 1px solid #f1f5f9;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+}

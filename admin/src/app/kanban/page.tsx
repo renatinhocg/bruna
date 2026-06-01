@@ -13,7 +13,6 @@ function KanbanColumn({ column, columnTasks, onEdit, onDelete }: { column: Colum
           borderRadius: 12,
           padding: 12,
           minHeight: 420,
-          boxShadow: '0 2px 8px #0000000a',
           display: 'flex',
           flexDirection: 'column',
           border: isOver ? `2px solid ${column.color}` : '1px solid #232323',
@@ -153,7 +152,7 @@ function DraggableTaskCard({ task, onEdit, onDelete }: { task: Task; onEdit: (ta
   };
 
   return (
-    <div ref={setNodeRef} style={{ ...style, background: '#23232b', borderRadius: 10, boxShadow: '0 2px 8px #0000000a', padding: 12, marginBottom: 0, border: '1px solid #232323', color: '#fff', position: 'relative', minHeight: 60 }} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={{ ...style, background: '#23232b', borderRadius: 10, padding: 12, marginBottom: 0, border: '1px solid #333', color: '#fff', position: 'relative', minHeight: 60 }} {...attributes} {...listeners}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
         <span style={{ fontWeight: 600, fontSize: 15, flex: 1 }}>{task.titulo}</span>
         <Tag color={PRIORIDADE_COLORS[task.prioridade]} style={{ fontSize: 11, borderRadius: 6, marginLeft: 4 }}>{task.prioridade}</Tag>
@@ -251,7 +250,7 @@ const KanbanPage = () => {
     // Buscar nome do projeto
     const id = searchParams.get('id');
     if (id) {
-      apiService.getProjetoById(id).then(res => {
+      apiService.getProjetoById(id).then((res: any) => {
         setProjetoNome(res.data?.nome || "");
       }).catch(() => setProjetoNome(""));
     }
